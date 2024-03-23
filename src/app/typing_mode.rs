@@ -1,26 +1,10 @@
-use std::str::Chars;
-
 use ratatui::{
     style::{Color, Style},
     text::{Line, Span},
 };
 
-// struct RevertAddBool(bool);
-//
-// impl Add<usize> for RevertAddBool {
-//     type Output = usize;
-//
-//     fn add(self, rhs: usize) -> Self::Output {
-//         if self.0 {
-//             rhs;
-//         }
-//         rhs + 1
-//     }
-// }
-
 pub struct TypingMode {
-    current_text: &'static str,
-    text_iter: Chars<'static>,
+    current_text: String,
     correct_letter: char,
     last_guessed: bool,
     guessed: usize,
@@ -29,35 +13,32 @@ pub struct TypingMode {
 impl<'a> TypingMode {
     pub fn new() -> TypingMode {
         TypingMode {
-            current_text: "init value",
+            current_text: "init value".to_string(),
             correct_letter: 'i',
-            text_iter: "init value".chars().into_iter(),
             last_guessed: true,
             guessed: 0,
         }
     }
 
-    pub fn init(&mut self, text: &'static str) {
+    pub fn init(&mut self, text: String) {
         self.guessed = 0;
         self.last_guessed = true;
         self.current_text = text;
-        self.text_iter = text.chars().into_iter();
         // this will always be a letter, because we have only &str that are not empty
-        self.correct_letter = self.text_iter.next().unwrap();
+        self.correct_letter = self.current_text.chars().nth(self.guessed).unwrap();
     }
 
     pub fn reload_typing(&mut self) {
         self.guessed = 0;
         self.last_guessed = true;
-        self.text_iter = self.current_text.chars().into_iter();
-        self.correct_letter = self.text_iter.next().unwrap();
+        self.correct_letter = self.current_text.chars().nth(self.guessed).unwrap();
     }
 
     pub fn guess(&mut self, key: char) -> Option<bool> {
         // if user typed right letter
         if key == self.correct_letter {
             // if there are some letter in word
-            if let Some(ch) = self.text_iter.next() {
+            if let Some(ch) = self.current_text.chars().nth(self.guessed + 1) {
                 self.correct_letter = ch;
                 self.last_guessed = true;
                 self.guessed += 1;

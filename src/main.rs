@@ -45,7 +45,7 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = ratatui::Terminal::new(backend)?;
 
-    let filename = "texts.txt";
+    let filename = "src/texts.txt";
     let mut app = App::new(filename);
     run_app(&mut terminal, &mut app)?;
 

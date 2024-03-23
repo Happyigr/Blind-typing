@@ -8,7 +8,7 @@ use self::typing_mode::TypingMode;
 mod typing_mode;
 pub struct App {
     pub current_screen: Screens,
-    // file: Vec<String>,
+    file: Vec<String>,
     typing_mode: TypingMode,
     rand: ThreadRng,
 }
@@ -47,17 +47,17 @@ impl Screens {
 
 impl App {
     pub fn new(filename: &str) -> App {
-        // let file = fs::read_to_string(filename).unwrap();
+        let file = fs::read_to_string(filename).unwrap();
 
         App {
             current_screen: Screens::Main,
             typing_mode: TypingMode::new(),
             rand: rand::thread_rng(),
-            // file: file
-            //     .split('\n')
-            //     .filter(|l| l != &"")
-            //     .map(|l| l.to_string())
-            //     .collect(),
+            file: file
+                .split('\n')
+                .filter(|l| l != &"")
+                .map(|l| l.to_string())
+                .collect(),
         }
     }
 
@@ -67,8 +67,8 @@ impl App {
 
     pub fn start_typing(&mut self) {
         self.current_screen = Screens::Typing;
-        // let index = self.rand.gen_range(0..self.file.len());
-        self.typing_mode.init("Hello World");
+        let index = self.rand.gen_range(0..self.file.len());
+        self.typing_mode.init(self.file[index].clone());
     }
 
     pub fn get_typing_text(&self) -> Line {
