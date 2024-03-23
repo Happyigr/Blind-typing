@@ -1,11 +1,11 @@
-use std::fs;
+use std::{fs, io};
 
 use rand::{rngs::ThreadRng, Rng};
 use ratatui::text::Line;
 
-use self::typing_mode::TypingMode;
+use self::typing_screen::TypingMode;
 
-mod typing_mode;
+mod typing_screen;
 pub struct App {
     pub current_screen: Screens,
     file: Vec<String>,
@@ -36,7 +36,7 @@ impl Screens {
     pub fn get_keys_hints(&self) -> &str {
         match self {
             Screens::Main => "q - exit app, s - start, r - global results",
-            Screens::Typing => "Esc - main screen, r - empty the typing",
+            Screens::Typing => "Esc - main screen, Tab - empty the typing",
             Screens::TypingResult => "q - main screen, c - continue typing",
             Screens::GlobalResultMain => "letter - letter result, Esc - main screen",
             Screens::LetterResult => "letter - another letter, Esc - global results",
@@ -75,8 +75,8 @@ impl App {
         self.typing_mode.get_text_to_render()
     }
 
-    pub fn guess(&mut self, key: char) -> Option<bool> {
-        self.typing_mode.guess(key)
+    pub fn guess(&mut self, key: char) -> Result<Option<bool>, io::Error> {
+        Ok(self.typing_mode.guess(key)?)
         // cursor movement todo!
     }
 }

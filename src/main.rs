@@ -1,12 +1,13 @@
 mod app;
 mod ui;
-use std::{fs, io};
+use std::{fs, io, time::Duration};
 
 use app::{App, Screens};
 use clap::Parser;
 use crossterm::{
     event::{
         self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
+        KeyModifiers,
     },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -45,7 +46,7 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = ratatui::Terminal::new(backend)?;
 
-    let filename = "src/texts.txt";
+    let filename = "src/tests.txt";
     let mut app = App::new(filename);
     run_app(&mut terminal, &mut app)?;
 
@@ -67,6 +68,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
         if let Event::Key(key) = event::read()? {
             if key.kind != KeyEventKind::Press {
                 continue;
+            }
+            if key.code == KeyCode::Char('c') && key.modifiers == KeyModifiers::CONTROL {
+                break;
             }
             match app.current_screen {
                 Screens::Main => main_behavior(&key, app),
@@ -99,17 +103,23 @@ fn typing_behavior(key: &KeyEvent, app: &mut App) {
         // reload the typing letters
         KeyCode::Tab => app.reload_typing(),
         KeyCode::Char(ch) => {
-            // if there are the next letter
-            if let Some(guessed) = app.guess(ch) {
-                if guessed {
-                    // make the cursor to the next letter and make the letter green
+            // if there are no errors
+            if let Ok(guess) = app.guess(ch) {
+                // if there are the next letter
+                if let Some(guessed) = guess {
+                    if guessed {
+                        // cursore movement
+                    } else {
+                        // cursore movement
+                    }
+                // else if there are no more letters in the word we end to typing
                 } else {
-                    // make the letter red
+                    // make the end of the typing
+                    app.current_screen = Screens::TypingResult;
                 }
-            // else if there are no more letters in the word we end to typing
             } else {
-                // make the end of the typing
-                app.current_screen = Screens::TypingResult;
+                // error handling
+                todo!()
             }
         }
         _ => (),
