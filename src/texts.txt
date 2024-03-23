@@ -1,0 +1,3 @@
+Hi, i'am the creator of this app, and i wrote all of this sentences
+If you want you cann add your own texts in this file (texts.txt in the directory of the app)
+This is my first cli App, so i dont know if it works properly, if you see some bugs, please write me!
