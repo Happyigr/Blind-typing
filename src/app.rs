@@ -5,7 +5,7 @@ use ratatui::text::Line;
 
 use self::typing_screen::TypingMode;
 
-mod typing_screen;
+pub mod typing_screen;
 pub struct App {
     pub current_screen: Screens,
     file: Vec<String>,
@@ -75,8 +75,8 @@ impl App {
         self.typing_mode.get_text_to_render()
     }
 
-    pub fn guess(&mut self, key: char) -> Result<Option<bool>, io::Error> {
-        Ok(self.typing_mode.guess(key)?)
+    pub fn guess(&mut self, key: char) -> Option<bool> {
+        self.typing_mode.guess(key)
         // cursor movement todo!
     }
 }

@@ -1,6 +1,5 @@
 mod app;
 mod ui;
-use std::{fs, io, time::Duration};
 
 use app::{App, Screens};
 use clap::Parser;
@@ -16,6 +15,7 @@ use ratatui::{
     backend::{Backend, CrosstermBackend},
     Terminal,
 };
+use std::io;
 use ui::ui;
 
 // this is clap
@@ -103,23 +103,17 @@ fn typing_behavior(key: &KeyEvent, app: &mut App) {
         // reload the typing letters
         KeyCode::Tab => app.reload_typing(),
         KeyCode::Char(ch) => {
-            // if there are no errors
-            if let Ok(guess) = app.guess(ch) {
-                // if there are the next letter
-                if let Some(guessed) = guess {
-                    if guessed {
-                        // cursore movement
-                    } else {
-                        // cursore movement
-                    }
-                // else if there are no more letters in the word we end to typing
+            // if there are the next letter
+            if let Some(guess) = app.guess(ch) {
+                if guess {
+                    // cursore movement
                 } else {
-                    // make the end of the typing
-                    app.current_screen = Screens::TypingResult;
+                    // cursore movement
                 }
+            // else if there are no more letters in the word we end to typing
             } else {
-                // error handling
-                todo!()
+                // make the end of the typing
+                app.current_screen = Screens::TypingResult;
             }
         }
         _ => (),

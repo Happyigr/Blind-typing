@@ -1,15 +1,35 @@
-mod result_screen;
-use result_screen::Accuracy;
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{self, Write},
-};
-
+use chrono::{DateTime, Local, Timelike};
 use ratatui::{
     style::{Color, Style},
     text::{Line, Span},
 };
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fs::File, io::Write};
+
+#[derive(Deserialize, Serialize)]
+pub struct ResultData {
+    pub words_amount: usize,
+    pub time: usize,
+    pub letters: HashMap<char, f64>,
+}
+
+#[derive(Clone, Copy)]
+pub struct Accuracy {
+    // amount of letters in the text
+    pub amount: usize,
+    // attempts of typing the letter
+    pub attempts: usize,
+}
+
+impl Accuracy {
+    pub fn new(amount: usize, attempts: usize) -> Accuracy {
+        Accuracy { amount, attempts }
+    }
+
+    pub fn get_percent(&self) -> f64 {
+        ((self.amount as f64 / self.attempts as f64) * 1000.0).round() / 10.0
+    }
+}
 
 pub struct TypingMode {
     current_text: String,
@@ -18,6 +38,7 @@ pub struct TypingMode {
     guessed: usize,
     attempts: usize,
     results: HashMap<char, Accuracy>,
+    start_time: DateTime<Local>,
 }
 
 impl TypingMode {
@@ -29,6 +50,7 @@ impl TypingMode {
             guessed: 0,
             attempts: 0,
             results: HashMap::new(),
+            start_time: Local::now(),
         }
     }
 
@@ -40,6 +62,7 @@ impl TypingMode {
         self.results = HashMap::new();
         // this will always be a letter, because we have only &str that are not empty
         self.correct_letter = self.current_text.chars().nth(self.guessed).unwrap();
+        self.start_time = Local::now();
     }
 
     pub fn reload_typing(&mut self) {
@@ -47,10 +70,12 @@ impl TypingMode {
         self.guessed = 0;
         self.last_guessed = true;
         self.results = HashMap::new();
+        // this will always be a letter, because we have only &str that are not empty
         self.correct_letter = self.current_text.chars().nth(self.guessed).unwrap();
+        self.start_time = Local::now();
     }
 
-    pub fn guess(&mut self, key: char) -> Result<Option<bool>, io::Error> {
+    pub fn guess(&mut self, key: char) -> Option<bool> {
         self.attempts += 1;
         // if user typed right letter
         if key == self.correct_letter {
@@ -68,33 +93,38 @@ impl TypingMode {
                 self.correct_letter = ch;
                 self.last_guessed = true;
                 self.guessed += 1;
-                Ok(Some(true))
+                Some(true)
             // if not return the Err(())
             } else {
-                self.result_calculation()?;
-                Ok(None)
+                self.result_calculation();
+                None
             }
         // if the user typed wrong letter
         } else {
             self.last_guessed = false;
-            Ok(Some(false))
+            Some(false)
         }
     }
 
     // this function writes the results in the json file
-    fn result_calculation(&self) -> Result<(), io::Error> {
-        let mut results_vec: Vec<(char, f64)> = vec![];
+    fn result_calculation(&mut self) {
+        let typing_time = Local::now().signed_duration_since(self.start_time);
+        let mut letters_results: HashMap<char, f64> = HashMap::new();
+        let words: Vec<&str> = self.current_text.split_whitespace().collect();
 
-        for (k, v) in self.results.iter() {
-            results_vec.push((*k, v.get_percent()));
+        for (ch, acc) in self.results.iter_mut() {
+            letters_results.insert(*ch, acc.get_percent());
         }
 
-        let results_json = serde_json::to_string(&results_vec).expect("Failed to parse the json");
+        let result_json: ResultData = ResultData {
+            words_amount: words.len(),
+            time: typing_time.num_milliseconds() as usize,
+            letters: letters_results,
+        };
 
-        let mut file = File::create("src/results.json")?;
-        file.write_all(results_json.as_bytes())?;
-
-        Ok(())
+        let mut file = File::create("src/results.json").unwrap();
+        file.write_all(serde_json::to_string(&result_json).unwrap().as_bytes())
+            .unwrap();
     }
 
     pub fn get_text_to_render(&self) -> Line {
