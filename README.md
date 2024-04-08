@@ -20,24 +20,24 @@ I have heard a lot about rust, and I wanted to learn it. I have read the Rust bo
 I want to implement both of versions of my app: TUI and GUI (with tauri).
 
 TUI app:
-[x] - make the working terminal app, with all the screens
-[x] - the text to it (hints for keys) and the movement from screen to screen.
-[x] - the main logic of the app
-[x] - results after typing
-[ ] - better results after typing (no JSON)
-[ ] - dynimacly results when typing
-[ ] - global results of all the typing tests
-[ ] - global results by letter
-[ ] - better ui
+- [x] - make the working terminal app, with all the screens
+- [x] - the text to it (hints for keys) and the movement from screen to screen.
+- [x] - the main logic of the app
+- [x] - results after typing
+- [ ] - better results after typing (no JSON)
+- [ ] - dynimacly results when typing
+- [ ] - global results of all the typing tests
+- [ ] - global results by letter
+- [ ] - better ui
 
 GUI app:
-[ ] - make the working website with tauri
-[ ] - Main, Results, Typing screens
-[ ] - typing process
-[ ] - results after typing
-[ ] - dynamic results in typing mode
-[ ] - global results
-[ ] - results for every letter
+- [ ] - make the working website with tauri
+- [ ] - Main, Results, Typing screens
+- [ ] - typing process
+- [ ] - results after typing
+- [ ] - dynamic results in typing mode
+- [ ] - global results
+- [ ] - results for every letter
 
 ## Thanks for
 
