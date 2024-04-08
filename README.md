@@ -25,7 +25,7 @@ TUI app:
 - [x] - the main logic of the app
 - [x] - results after typing
 - [ ] - better results after typing (no JSON)
-- [ ] - dynimacly results when typing
+- [ ] - dynimacly results when typing with colored keyboard, that shows taps on keyboard
 - [ ] - global results of all the typing tests
 - [ ] - global results by letter
 - [ ] - better ui
