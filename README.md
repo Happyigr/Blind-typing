@@ -1,4 +1,4 @@
-![[main_screen.png]]
+![main_screen.png](main_screen.png)
 
 # Blind typing Test
 
@@ -34,7 +34,7 @@ GUI app:
 
 ## Thanks for
 
-ChatGPT :)
-[[https://docs.rs/ratatui/latest/ratatui/index.html]]
-[[https://www.keybr.com/]]
-[[https://doc.rust-lang.org/stable/book/]]
+- ChatGPT :)
+- https://docs.rs/ratatui/latest/ratatui/index.html
+- https://www.keybr.com/
+- https://doc.rust-lang.org/stable/book/
