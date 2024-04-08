@@ -4,6 +4,13 @@
 
 Hi there, I have tryed to improve my blind typing powers, and have found some usefull websites, but theyy were not perfect for me. Because of that I have made my own blind typing app in Rust.
 
+## Installation
+
+I think, that this should work (you need a rust installed on your machine):
+`git clone https://github.com/Happyigr/Blind-typing`
+`cd in the folder of the project`
+`cargo run`
+
 ## Why rust?
 
 I have heard a lot about rust, and I wanted to learn it. I have read the Rust book, but i want to tr, to implement smth useful. Because of it I wanted to make my own project, that i can show on my job or my friends.
