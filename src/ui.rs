@@ -50,28 +50,40 @@ pub fn ui(f: &mut Frame, app: &App) {
             let main_part = app.get_typing_text().alignment(Alignment::Center);
             f.render_widget(main_part, chunks[1]);
         }
-        Screens::TypingResult => {
-            let main_chunk = Layout::vertical([
-                Constraint::Length(5),
-                Constraint::Percentage(100),
-                Constraint::Length(11),
-            ])
-            .split(chunks[1]);
-            let keyboard_chunk = Layout::horizontal([
-                Constraint::Min(10),
-                Constraint::Length(52),
-                Constraint::Min(10),
-            ])
-            .split(main_chunk[2]);
-
-            render_results(f, &main_chunk[0]);
-            render_keyboard(f, &keyboard_chunk[1]);
-        }
-        Screens::GlobalResultMain => (),
+        Screens::TypingResult => render_results(f, &chunks[1]),
+        Screens::GlobalResultMain => render_results(f, &chunks[1]),
         Screens::LetterResult => (),
         Screens::Exiting => (),
-        Screens::Main => {}
+        Screens::Main => render_logo(f, &chunks[1]),
     };
+}
+
+fn render_logo(f: &mut Frame, area: &Rect) {
+    let paragraph = Paragraph::new(Text::styled(
+        "╔╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╗
+╠╬╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╬╣
+╠╣                                                       ╠╣
+╠╣    ╠══╦╦══╣  ╔╗  ╔╗  ╔╦══╦╗  ╔╗  ╔╦╗   ╔╗   ╔═══╗     ╠╣
+╠╣       ╠╣     ╠╣  ╠╣  ╠╣  ╠╣  ╚╝  ╠╣╚╗  ╠╣  ╔╝         ╠╣
+╠╣       ╠╣     ╚╩══╬╣  ╠╬══╩╝  ╔╗  ╠╣ ╚╗ ╠╣  ║   ══╗    ╠╣
+╠╣       ╠╣         ╠╣  ╠╣      ╠╣  ╠╣  ╚╗╠╣  ╚╗   ╔╝    ╠╣
+╠╣       ╚╝     ╠═══╩╝  ╚╝      ╚╝  ╚╝   ╚╩╝   ╚═══╝     ╠╣
+╠╣                                                       ╠╣
+╠╣           ╠══╦╦══╣  ╔════╣  ╔═══╣   ╠══╦╦══╣          ╠╣
+╠╣              ╠╣     ║       ║          ╠╣             ╠╣
+╠╣              ╠╣     ╠════╣  ╚═══╗      ╠╣             ╠╣
+╠╣              ╠╣     ║           ║      ╠╣             ╠╣
+╠╣              ╚╝     ╚════╣  ╠═══╝      ╚╝             ╠╣
+╠╣                                                       ╠╣
+╠╬╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╬╣
+╚╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╩╝",
+        Style::new().fg(Color::Red),
+    ))
+    .centered();
+
+    let chunks = Layout::vertical([Constraint::Min(1), Constraint::Min(20), Constraint::Min(1)])
+        .split(*area);
+    f.render_widget(paragraph, chunks[1]);
 }
 
 fn read_json_results_from_file() -> ResultData {
@@ -92,11 +104,13 @@ fn render_results(f: &mut Frame, area: &Rect) {
             total_accuracy += perc;
         }
     }
+
     let total_accuracy = total_accuracy / results.letters.keys().len() as f64;
 
     let time_line = Line::styled(
         format!(
             "Speed: {} wpm, Total accuracy: {total_accuracy}%",
+            // 60000 millisecs in minute and 10 is the one digit after period
             (results.words_amount as f64 / results.time as f64 * 60000.0 * 10.0).round() / 10.0
         ),
         Style::new().fg(Color::Red),
@@ -120,11 +134,25 @@ fn render_results(f: &mut Frame, area: &Rect) {
         .wrap(Wrap { trim: true })
         .centered();
 
-    let chunks =
-        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).split(*area);
+    let main_chunk = Layout::vertical([
+        Constraint::Length(5),
+        Constraint::Percentage(100),
+        Constraint::Length(11),
+    ])
+    .split(*area);
+    let chunks = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(main_chunk[0]);
 
     f.render_widget(time_line, chunks[0]);
     f.render_widget(letters_paragraph, chunks[1]);
+
+    let keyboard_chunk = Layout::horizontal([
+        Constraint::Min(10),
+        Constraint::Length(67),
+        Constraint::Min(10),
+    ])
+    .split(main_chunk[2]);
+    render_keyboard(f, &keyboard_chunk[1]);
 }
 
 fn render_keyboard(f: &mut Frame, area: &Rect) {
@@ -137,9 +165,9 @@ fn render_keyboard(f: &mut Frame, area: &Rect) {
     ])
     .split(inner_area);
 
-    render_word_in_blocks("qwertyuiop", &inner_chunks[0], f, 0);
-    render_word_in_blocks("asdfghjkl", &inner_chunks[1], f, 2);
-    render_word_in_blocks("zxcvbnm", &inner_chunks[2], f, 6);
+    render_word_in_blocks("qwertyuiop[]\\", &inner_chunks[0], f, 0);
+    render_word_in_blocks("asdfghjkl;'", &inner_chunks[1], f, 5);
+    render_word_in_blocks("zxcvbnm,./", &inner_chunks[2], f, 7);
 
     f.render_widget(main_block, *area);
 }

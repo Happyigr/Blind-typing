@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, Timelike};
+use chrono::{DateTime, Local};
 use ratatui::{
     style::{Color, Style},
     text::{Line, Span},
@@ -38,7 +38,7 @@ pub struct TypingMode {
     guessed: usize,
     attempts: usize,
     results: HashMap<char, Accuracy>,
-    start_time: DateTime<Local>,
+    start_time: Option<DateTime<Local>>,
 }
 
 impl TypingMode {
@@ -50,7 +50,7 @@ impl TypingMode {
             guessed: 0,
             attempts: 0,
             results: HashMap::new(),
-            start_time: Local::now(),
+            start_time: None,
         }
     }
 
@@ -62,7 +62,7 @@ impl TypingMode {
         self.results = HashMap::new();
         // this will always be a letter, because we have only &str that are not empty
         self.correct_letter = self.current_text.chars().nth(self.guessed).unwrap();
-        self.start_time = Local::now();
+        self.start_time = None;
     }
 
     pub fn reload_typing(&mut self) {
@@ -72,10 +72,13 @@ impl TypingMode {
         self.results = HashMap::new();
         // this will always be a letter, because we have only &str that are not empty
         self.correct_letter = self.current_text.chars().nth(self.guessed).unwrap();
-        self.start_time = Local::now();
+        self.start_time = None;
     }
 
     pub fn guess(&mut self, key: char) -> Option<bool> {
+        if self.start_time.is_none() {
+            self.start_time = Some(Local::now());
+        }
         self.attempts += 1;
         // if user typed right letter
         if key == self.correct_letter {
@@ -108,7 +111,7 @@ impl TypingMode {
 
     // this function writes the results in the json file
     fn result_calculation(&mut self) {
-        let typing_time = Local::now().signed_duration_since(self.start_time);
+        let typing_time = Local::now().signed_duration_since(self.start_time.unwrap());
         let mut letters_results: HashMap<char, f64> = HashMap::new();
         let words: Vec<&str> = self.current_text.split_whitespace().collect();
 
