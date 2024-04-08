@@ -7,9 +7,9 @@ Hi there, I have tryed to improve my blind typing powers, and have found some us
 ## Installation
 
 I think, that this should work (you need a rust installed on your machine):
-`git clone https://github.com/Happyigr/Blind-typing`
-`cd in the folder of the project`
-`cargo run`
+- `git clone https://github.com/Happyigr/Blind-typing`
+- `cd in the folder of the project`
+- `cargo run`
 
 ## Why rust?
 
