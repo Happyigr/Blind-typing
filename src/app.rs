@@ -3,7 +3,7 @@ use std::{fs, io};
 use rand::{rngs::ThreadRng, Rng};
 use ratatui::text::Line;
 
-use self::typing_screen::TypingMode;
+use self::typing_screen::{JSONResults, TypingMode};
 
 pub mod typing_screen;
 pub struct App {
@@ -73,6 +73,10 @@ impl App {
 
     pub fn get_typing_text(&self) -> Line {
         self.typing_mode.get_text_to_render()
+    }
+
+    pub fn get_last_results(&self) -> &JSONResults {
+        self.typing_mode.get_last_results()
     }
 
     pub fn guess(&mut self, key: char) -> Option<bool> {

@@ -8,7 +8,10 @@ use ratatui::{
     Frame,
 };
 
-use crate::app::{typing_screen::ResultData, App, Screens};
+use crate::app::{
+    typing_screen::{JSONLetterInfo, JSONResults},
+    App, Screens,
+};
 
 pub fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -50,8 +53,8 @@ pub fn ui(f: &mut Frame, app: &App) {
             let main_part = app.get_typing_text().alignment(Alignment::Center);
             f.render_widget(main_part, chunks[1]);
         }
-        Screens::TypingResult => render_results(f, &chunks[1]),
-        Screens::GlobalResultMain => render_results(f, &chunks[1]),
+        Screens::TypingResult => render_results(f, &chunks[1], app.get_last_results()),
+        Screens::GlobalResultMain => render_results(f, &chunks[1], &read_json_results_from_file()),
         Screens::LetterResult => (),
         Screens::Exiting => (),
         Screens::Main => render_logo(f, &chunks[1]),
@@ -86,47 +89,38 @@ fn render_logo(f: &mut Frame, area: &Rect) {
     f.render_widget(paragraph, chunks[1]);
 }
 
-fn read_json_results_from_file() -> ResultData {
+fn read_json_results_from_file() -> JSONResults {
     let file = File::open("src/results.json").unwrap();
     let read_buf = BufReader::new(file);
-    let readed_json: ResultData = serde_json::from_reader(read_buf).unwrap();
+    let readed_json: JSONResults = serde_json::from_reader(read_buf).unwrap();
 
     readed_json
 }
 
-fn render_results(f: &mut Frame, area: &Rect) {
-    let results = read_json_results_from_file();
-    let all_letters = "qwertyuiopasdfghjklzxcvbnm QWERTYUIOPASDFGHJKLZXCVBNM[];',./{}|:\"<>?!";
-
-    let mut total_accuracy = 0.0;
-    for (_, perc) in results.letters.iter() {
-        if perc != &0.0 {
-            total_accuracy += perc;
-        }
-    }
-
-    let total_accuracy = total_accuracy / results.letters.keys().len() as f64;
+fn render_results(f: &mut Frame, area: &Rect, results: &JSONResults) {
+    // let all_letters = "qwertyuiopasdfghjklzxcvbnm QWERTYUIOPASDFGHJKLZXCVBNM[];',./{}|:\"<>?!";
 
     let time_line = Line::styled(
         format!(
-            "Speed: {} wpm, Total accuracy: {total_accuracy}%",
-            // 60000 millisecs in minute and 10 is the one digit after period
-            (results.words_amount as f64 / results.time as f64 * 60000.0 * 10.0).round() / 10.0
+            "Speed: {} wpm, Total accuracy: {}%",
+            results.wpm, results.total_accuracy
         ),
         Style::new().fg(Color::Red),
     )
     .centered();
+
     let letters_line = Line::default()
-        .spans(all_letters.chars().into_iter().map(|ch| {
-            let perc = results.letters.get(&ch).unwrap_or(&0.0);
-            let color = match perc {
+        // iterating through the all info about letters and get the accuracy of the main letter
+        .spans(results.letters_info.iter().map(|(ch, letter_info)| {
+            let accuracy = letter_info.letter_accuracies.get(&ch).unwrap_or(&0.0);
+            let color = match accuracy {
                 perc if *perc == 0.0 => Color::White,
                 perc if *perc >= 80.0 => Color::Green,
                 perc if *perc >= 50.0 => Color::Blue,
                 perc if *perc <= 50.0 => Color::Red,
                 _ => Color::White,
             };
-            Span::styled(format!("{ch}:{perc}% "), Style::new().fg(color))
+            Span::styled(format!("{ch}:{accuracy}% "), Style::new().fg(color))
         }))
         .centered();
 
