@@ -72,6 +72,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
             if key.code == KeyCode::Char('c') && key.modifiers == KeyModifiers::CONTROL {
                 break;
             }
+
             match app.current_screen {
                 Screens::Main => main_behavior(&key, app),
                 Screens::Typing => typing_behavior(&key, app),
@@ -141,14 +142,20 @@ fn exiting_behavior(key: &KeyEvent, app: &mut App) -> bool {
 fn global_res_behavior(key: &KeyEvent, app: &mut App) {
     match key.code {
         KeyCode::Esc => app.current_screen = Screens::Main,
-        KeyCode::Char(ch) => todo!(),
+        KeyCode::Char(ch) => {
+            app.letter_for_result = ch;
+            app.current_screen = Screens::LetterResult
+        }
         _ => (),
     }
 }
 fn letter_res_behavior(key: &KeyEvent, app: &mut App) {
     match key.code {
         KeyCode::Esc => app.current_screen = Screens::GlobalResultMain,
-        KeyCode::Char(ch) => todo!(),
+        KeyCode::Char(ch) => {
+            app.letter_for_result = ch;
+            app.current_screen = Screens::LetterResult
+        }
         _ => (),
     }
 }

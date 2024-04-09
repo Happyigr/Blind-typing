@@ -55,7 +55,7 @@ pub fn ui(f: &mut Frame, app: &App) {
         }
         Screens::TypingResult => render_results(f, &chunks[1], app.get_last_results()),
         Screens::GlobalResultMain => render_results(f, &chunks[1], &read_json_results_from_file()),
-        Screens::LetterResult => (),
+        Screens::LetterResult => render_letter_results(f, &chunks[1], app.letter_for_result),
         Screens::Exiting => (),
         Screens::Main => render_logo(f, &chunks[1]),
     };
@@ -97,9 +97,60 @@ fn read_json_results_from_file() -> JSONResults {
     readed_json
 }
 
-fn render_results(f: &mut Frame, area: &Rect, results: &JSONResults) {
-    // let all_letters = "qwertyuiopasdfghjklzxcvbnm QWERTYUIOPASDFGHJKLZXCVBNM[];',./{}|:\"<>?!";
+fn render_letter_results(f: &mut Frame, area: &Rect, ch: char) {
+    let results_json = read_json_results_from_file();
+    // todo make the error handling
+    let letters_info = results_json.letters_info.get(&ch).unwrap();
 
+    let time_line = Line::styled(
+        format!(
+            "Letter: \'{ch}\', Speed: todo()! wpm, Total accuracy: {}%",
+            letters_info.letter_accuracies.get(&ch).unwrap()
+        ),
+        Style::new().fg(Color::Red),
+    )
+    .centered();
+
+    let letters_line = Line::default()
+        // iterating through the all info about letters and get the accuracy of the main letter
+        .spans(letters_info.letter_accuracies.iter().map(|(ch, accuracy)| {
+            let color = match accuracy {
+                perc if *perc == 0.0 => Color::White,
+                perc if *perc >= 80.0 => Color::Green,
+                perc if *perc >= 50.0 => Color::Blue,
+                perc if *perc <= 50.0 => Color::Red,
+                _ => Color::White,
+            };
+            Span::styled(format!("{ch}:{accuracy}% "), Style::new().fg(color))
+        }))
+        .centered();
+
+    let letters_paragraph = Paragraph::new(letters_line)
+        .wrap(Wrap { trim: true })
+        .centered();
+
+    let main_chunk = Layout::vertical([
+        Constraint::Length(5),
+        Constraint::Percentage(100),
+        Constraint::Length(11),
+    ])
+    .split(*area);
+    let chunks = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(main_chunk[0]);
+
+    f.render_widget(time_line, chunks[0]);
+    f.render_widget(letters_paragraph, chunks[1]);
+
+    let keyboard_chunk = Layout::horizontal([
+        Constraint::Min(10),
+        Constraint::Length(67),
+        Constraint::Min(10),
+    ])
+    .split(main_chunk[2]);
+    render_keyboard(f, &keyboard_chunk[1]);
+}
+
+fn render_results(f: &mut Frame, area: &Rect, results: &JSONResults) {
     let time_line = Line::styled(
         format!(
             "Speed: {} wpm, Total accuracy: {}%",

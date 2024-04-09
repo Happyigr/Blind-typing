@@ -23,12 +23,13 @@ I want to implement both of versions of my app: TUI and GUI (with tauri).
 - [x] - the text to it (hints for keys) and the movement from screen to screen.
 - [x] - the main logic of the app
 - [x] - results after typing
-- [ ] - better results after typing (no JSON)
+- [x] - better results after typing (no JSON)
 - [ ] - text getting from other resources
 - [ ] - dynimacly results when typing with colored keyboard, that shows taps on keyboard
 - [ ] - global results of all the typing tests
-- [ ] - global results by letter
+- [x] - global results by letter
 - [ ] - better ui
+- [ ] - error handling
 
 GUI app:
 - [ ] - make the working website with tauri

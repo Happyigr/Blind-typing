@@ -6,12 +6,6 @@ use ratatui::text::Line;
 use self::typing_screen::{JSONResults, TypingMode};
 
 pub mod typing_screen;
-pub struct App {
-    pub current_screen: Screens,
-    file: Vec<String>,
-    typing_mode: TypingMode,
-    rand: ThreadRng,
-}
 
 pub enum Screens {
     Typing,
@@ -45,12 +39,21 @@ impl Screens {
     }
 }
 
+pub struct App {
+    pub current_screen: Screens,
+    pub letter_for_result: char,
+    file: Vec<String>,
+    typing_mode: TypingMode,
+    rand: ThreadRng,
+}
+
 impl App {
     pub fn new(filename: &str) -> App {
         let file = fs::read_to_string(filename).unwrap();
 
         App {
             current_screen: Screens::Main,
+            letter_for_result: ' ',
             typing_mode: TypingMode::new(),
             rand: rand::thread_rng(),
             file: file

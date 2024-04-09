@@ -70,6 +70,12 @@ pub struct JSONResults {
     pub letters_info: HashMap<char, JSONLetterInfo>,
 }
 
+// impl JSONResults{
+//     fn update(&mut self, other: JSONResults){
+//         self.wpm
+//     }
+// }
+
 pub struct TypingMode {
     start_time: Option<DateTime<Local>>,
     current_text: String,
@@ -150,6 +156,10 @@ impl TypingMode {
 
     // this function writes the results in the json file
     fn result_calculation(&mut self) {
+        // let file = File::open("src/results.json").unwrap();
+        // let read_buf = BufReader::new(file);
+        // let readed_json: JSONResults = serde_json::from_reader(read_buf).unwrap();
+
         let typing_time = Local::now().signed_duration_since(self.start_time.unwrap());
 
         let words: Vec<&str> = self.current_text.split_whitespace().collect();
@@ -166,17 +176,19 @@ impl TypingMode {
             .map(|(ch, letter_info)| (*ch, letter_info.to_json(*ch)))
             .collect();
 
-        let result_json: JSONResults = JSONResults {
+        let new_json: JSONResults = JSONResults {
             wpm,
             total_accuracy,
             letters_info,
         };
 
+        // new_json = readed_json.update(new_json);
+
         let mut file = File::create("src/results.json").unwrap();
-        file.write_all(serde_json::to_string(&result_json).unwrap().as_bytes())
+        file.write_all(serde_json::to_string(&new_json).unwrap().as_bytes())
             .unwrap();
 
-        self.result_data = Some(result_json);
+        self.result_data = Some(new_json);
     }
 
     pub fn get_last_results(&self) -> &JSONResults {
