@@ -63,6 +63,19 @@ pub struct JSONLetterInfo {
     pub letter_accuracies: HashMap<char, f64>,
 }
 
+impl JSONLetterInfo {
+    fn update(&mut self, other: &JSONLetterInfo) {
+        for (ch, acc_other) in other.letter_accuracies.iter() {
+            if let Some(acc_main) = self.letter_accuracies.get_mut(ch) {
+                let temp = *acc_main;
+                *acc_main = (acc_other + temp) / 2.0;
+            } else {
+                self.letter_accuracies.insert(*ch, *acc_other);
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct JSONResults {
     pub wpm: f64,
@@ -70,11 +83,19 @@ pub struct JSONResults {
     pub letters_info: HashMap<char, JSONLetterInfo>,
 }
 
-// impl JSONResults{
-//     fn update(&mut self, other: JSONResults){
-//         self.wpm
-//     }
-// }
+impl JSONResults {
+    fn update(&mut self, other: JSONResults) {
+        self.wpm = (self.wpm + other.wpm) / 2.0;
+        self.total_accuracy = (self.total_accuracy + other.total_accuracy) / 2.0;
+        for (ch, info_other) in other.letters_info.into_iter() {
+            if let Some(info_main) = self.letters_info.get_mut(&ch) {
+                info_main.update(&info_other);
+            } else {
+                self.letters_info.insert(ch, info_other);
+            }
+        }
+    }
+}
 
 pub struct TypingMode {
     start_time: Option<DateTime<Local>>,
@@ -156,9 +177,9 @@ impl TypingMode {
 
     // this function writes the results in the json file
     fn result_calculation(&mut self) {
-        // let file = File::open("src/results.json").unwrap();
-        // let read_buf = BufReader::new(file);
-        // let readed_json: JSONResults = serde_json::from_reader(read_buf).unwrap();
+        let file = File::open("src/results.json").unwrap();
+        let read_buf = BufReader::new(file);
+        let mut readed_json: JSONResults = serde_json::from_reader(read_buf).unwrap();
 
         let typing_time = Local::now().signed_duration_since(self.start_time.unwrap());
 
@@ -182,13 +203,13 @@ impl TypingMode {
             letters_info,
         };
 
-        // new_json = readed_json.update(new_json);
+        readed_json.update(new_json);
 
         let mut file = File::create("src/results.json").unwrap();
-        file.write_all(serde_json::to_string(&new_json).unwrap().as_bytes())
+        file.write_all(serde_json::to_string(&readed_json).unwrap().as_bytes())
             .unwrap();
 
-        self.result_data = Some(new_json);
+        self.result_data = Some(readed_json);
     }
 
     pub fn get_last_results(&self) -> &JSONResults {
