@@ -72,6 +72,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
             if key.code == KeyCode::Char('c') && key.modifiers == KeyModifiers::CONTROL {
                 break;
             }
+            if key.code == KeyCode::Modifier(event::ModifierKeyCode::LeftShift) {
+                app.shift_pressed = true;
+            } else {
+                app.shift_pressed = false;
+            }
 
             match app.current_screen {
                 Screens::Main => main_behavior(&key, app),

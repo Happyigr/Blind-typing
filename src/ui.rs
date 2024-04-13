@@ -1,17 +1,15 @@
-use std::{fs::File, io::BufReader};
-
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Style, Styled, Stylize},
     text::{Line, Span, Text},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
     Frame,
 };
+use std::{collections::HashMap, fs::File, io::BufReader};
 
-use crate::app::{
-    typing_screen::{JSONLetterInfo, JSONResults},
-    App, Screens,
-};
+use crate::app::{typing_screen::JSONResults, App, Screens};
+
+struct LetterInfo(char, f64);
 
 pub fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -53,12 +51,72 @@ pub fn ui(f: &mut Frame, app: &App) {
             let main_part = app.get_typing_text().alignment(Alignment::Center);
             f.render_widget(main_part, chunks[1]);
         }
-        Screens::TypingResult => render_results(f, &chunks[1], app.get_last_results()),
-        Screens::GlobalResultMain => render_results(f, &chunks[1], &read_json_results_from_file()),
-        Screens::LetterResult => render_letter_results(f, &chunks[1], app.letter_for_result),
-        Screens::Exiting => (),
+        Screens::TypingResult => {
+            // render_results(f, &chunks[1], app.get_last_results(), app.shift_pressed)
+            let json_results = app.get_last_results();
+
+            let results = json_results
+                .letters_info
+                .iter()
+                .map(|(ch, letter_info)| (*ch, *letter_info.letter_accuracies.get(&ch).unwrap()))
+                .collect::<HashMap<char, f64>>();
+
+            render_results(
+                f,
+                &chunks[1],
+                &results,
+                json_results.wpm,
+                json_results.total_accuracy,
+                app.shift_pressed,
+            )
+        }
+        Screens::GlobalResultMain => {
+            let json_results = read_json_results_from_file();
+
+            let results = json_results
+                .letters_info
+                .iter()
+                .map(|(ch, letter_info)| (*ch, *letter_info.letter_accuracies.get(&ch).unwrap()))
+                .collect::<HashMap<char, f64>>();
+
+            render_results(
+                f,
+                &chunks[1],
+                &results,
+                json_results.wpm,
+                json_results.total_accuracy,
+                app.shift_pressed,
+            )
+        }
+        Screens::LetterResult => {
+            let json_results = read_json_results_from_file();
+
+            let results = &json_results
+                .letters_info
+                .get(&app.letter_for_result)
+                .unwrap()
+                .letter_accuracies;
+
+            render_results(
+                f,
+                &chunks[1],
+                &results,
+                json_results.wpm,
+                json_results.total_accuracy,
+                app.shift_pressed,
+            )
+        }
+        Screens::Exiting => alert(f, "hi"),
         Screens::Main => render_logo(f, &chunks[1]),
     };
+}
+fn alert(f: &mut Frame, text: &str) {
+    let block = Block::bordered()
+        .border_type(BorderType::Rounded)
+        .set_style(Style::new().fg(Color::LightMagenta).bg(Color::Red));
+    let paragraph = Paragraph::new(Text::styled(text, Style::new().fg(Color::Red))).block(block);
+
+    f.render_widget(paragraph, f.size())
 }
 
 fn render_logo(f: &mut Frame, area: &Rect) {
@@ -97,30 +155,24 @@ fn read_json_results_from_file() -> JSONResults {
     readed_json
 }
 
-fn render_letter_results(f: &mut Frame, area: &Rect, ch: char) {
-    let results_json = read_json_results_from_file();
-    // todo make the error handling
-    let letters_info = results_json.letters_info.get(&ch).unwrap();
-
+fn render_results(
+    f: &mut Frame,
+    area: &Rect,
+    results: &HashMap<char, f64>,
+    wpm: f64,
+    total_accuracy: f64,
+    uppercase: bool,
+) {
     let time_line = Line::styled(
-        format!(
-            "Letter: \'{ch}\', Speed: todo()! wpm, Total accuracy: {}%",
-            letters_info.letter_accuracies.get(&ch).unwrap()
-        ),
+        format!("Speed: {} wpm, Total accuracy: {}%", wpm, total_accuracy),
         Style::new().fg(Color::Red),
     )
     .centered();
 
     let letters_line = Line::default()
         // iterating through the all info about letters and get the accuracy of the main letter
-        .spans(letters_info.letter_accuracies.iter().map(|(ch, accuracy)| {
-            let color = match accuracy {
-                perc if *perc == 0.0 => Color::White,
-                perc if *perc >= 80.0 => Color::Green,
-                perc if *perc >= 50.0 => Color::Blue,
-                perc if *perc <= 50.0 => Color::Red,
-                _ => Color::White,
-            };
+        .spans(results.iter().map(|(ch, accuracy)| {
+            let color = get_color_by_accuracy(*accuracy);
             Span::styled(format!("{ch}:{accuracy}% "), Style::new().fg(color))
         }))
         .centered();
@@ -147,60 +199,15 @@ fn render_letter_results(f: &mut Frame, area: &Rect, ch: char) {
         Constraint::Min(10),
     ])
     .split(main_chunk[2]);
-    render_keyboard(f, &keyboard_chunk[1]);
+    render_colored_keyboard(f, &keyboard_chunk[1], results, uppercase);
 }
 
-fn render_results(f: &mut Frame, area: &Rect, results: &JSONResults) {
-    let time_line = Line::styled(
-        format!(
-            "Speed: {} wpm, Total accuracy: {}%",
-            results.wpm, results.total_accuracy
-        ),
-        Style::new().fg(Color::Red),
-    )
-    .centered();
-
-    let letters_line = Line::default()
-        // iterating through the all info about letters and get the accuracy of the main letter
-        .spans(results.letters_info.iter().map(|(ch, letter_info)| {
-            let accuracy = letter_info.letter_accuracies.get(&ch).unwrap_or(&0.0);
-            let color = match accuracy {
-                perc if *perc == 0.0 => Color::White,
-                perc if *perc >= 80.0 => Color::Green,
-                perc if *perc >= 50.0 => Color::Blue,
-                perc if *perc <= 50.0 => Color::Red,
-                _ => Color::White,
-            };
-            Span::styled(format!("{ch}:{accuracy}% "), Style::new().fg(color))
-        }))
-        .centered();
-
-    let letters_paragraph = Paragraph::new(letters_line)
-        .wrap(Wrap { trim: true })
-        .centered();
-
-    let main_chunk = Layout::vertical([
-        Constraint::Length(5),
-        Constraint::Percentage(100),
-        Constraint::Length(11),
-    ])
-    .split(*area);
-    let chunks = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(main_chunk[0]);
-
-    f.render_widget(time_line, chunks[0]);
-    f.render_widget(letters_paragraph, chunks[1]);
-
-    let keyboard_chunk = Layout::horizontal([
-        Constraint::Min(10),
-        Constraint::Length(67),
-        Constraint::Min(10),
-    ])
-    .split(main_chunk[2]);
-    render_keyboard(f, &keyboard_chunk[1]);
-}
-
-fn render_keyboard(f: &mut Frame, area: &Rect) {
+fn render_colored_keyboard(
+    f: &mut Frame,
+    area: &Rect,
+    results: &HashMap<char, f64>,
+    uppercasse: bool,
+) {
     let main_block = Block::bordered().border_type(BorderType::Rounded);
     let inner_area = main_block.inner(*area);
     let inner_chunks = Layout::vertical([
@@ -209,29 +216,50 @@ fn render_keyboard(f: &mut Frame, area: &Rect) {
         Constraint::Length(3),
     ])
     .split(inner_area);
-
-    render_word_in_blocks("qwertyuiop[]\\", &inner_chunks[0], f, 0);
-    render_word_in_blocks("asdfghjkl;'", &inner_chunks[1], f, 5);
-    render_word_in_blocks("zxcvbnm,./", &inner_chunks[2], f, 7);
+    if uppercasse {
+        render_word_in_blocks_colored("QWERTYUIOP{}|", &inner_chunks[0], f, 0, results);
+        render_word_in_blocks_colored("ASDFGHJKL:\"", &inner_chunks[1], f, 5, results);
+        render_word_in_blocks_colored("ZXCVBNM<>?", &inner_chunks[2], f, 7, results);
+    } else {
+        render_word_in_blocks_colored("qwertyuiop[]\\", &inner_chunks[0], f, 0, results);
+        render_word_in_blocks_colored("asdfghjkl;'", &inner_chunks[1], f, 5, results);
+        render_word_in_blocks_colored("zxcvbnm,./", &inner_chunks[2], f, 7, results);
+    }
 
     f.render_widget(main_block, *area);
 }
 
-// this renders every letter of a word in one block
-fn render_word_in_blocks(letters: &str, chunk: &Rect, f: &mut Frame, margin: u16) {
+fn render_word_in_blocks_colored(
+    letters: &str,
+    chunk: &Rect,
+    f: &mut Frame,
+    margin: u16,
+    results: &HashMap<char, f64>,
+) {
     let area = Layout::horizontal(letters.chars().into_iter().map(|_| Constraint::Length(5)))
         .horizontal_margin(margin)
         .split(*chunk);
+
     for (i, ch) in letters.chars().into_iter().enumerate() {
-        render_str_in_block(&ch.to_string(), &area[i], f);
+        let accuracy: f64 = *results.get(&ch).unwrap_or(&0.0);
+        let color = get_color_by_accuracy(accuracy);
+
+        let block = Block::bordered().border_type(BorderType::Rounded);
+        let to_render = Paragraph::new(ch.to_string())
+            .style(Style::new().fg(color))
+            .alignment(Alignment::Center)
+            .block(block);
+
+        f.render_widget(to_render, area[i]);
     }
 }
 
-fn render_str_in_block(text: &str, area: &Rect, f: &mut Frame) {
-    let block = Block::bordered().border_type(BorderType::Rounded);
-    let to_render = Paragraph::new(text)
-        .alignment(Alignment::Center)
-        .block(block);
-
-    f.render_widget(to_render, *area);
+fn get_color_by_accuracy(accuracy: f64) -> Color {
+    match accuracy {
+        perc if perc == 0.0 => Color::White,
+        perc if perc >= 80.0 => Color::Green,
+        perc if perc >= 50.0 => Color::Blue,
+        perc if perc <= 50.0 => Color::Red,
+        _ => Color::White,
+    }
 }

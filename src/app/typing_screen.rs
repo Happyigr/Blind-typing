@@ -64,6 +64,12 @@ pub struct JSONLetterInfo {
 }
 
 impl JSONLetterInfo {
+    pub fn empty() -> JSONLetterInfo {
+        JSONLetterInfo {
+            main_letter: ' ',
+            letter_accuracies: HashMap::new(),
+        }
+    }
     fn update(&mut self, other: &JSONLetterInfo) {
         for (ch, acc_other) in other.letter_accuracies.iter() {
             if let Some(acc_main) = self.letter_accuracies.get_mut(ch) {
@@ -175,6 +181,7 @@ impl TypingMode {
         }
     }
 
+    // todo capitilize letters equal to no capitilize or make a map when shift is pressed
     // this function writes the results in the json file
     fn result_calculation(&mut self) {
         let file = File::open("src/results.json").unwrap();

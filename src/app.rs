@@ -42,6 +42,7 @@ impl Screens {
 pub struct App {
     pub current_screen: Screens,
     pub letter_for_result: char,
+    pub shift_pressed: bool,
     file: Vec<String>,
     typing_mode: TypingMode,
     rand: ThreadRng,
@@ -54,6 +55,7 @@ impl App {
         App {
             current_screen: Screens::Main,
             letter_for_result: ' ',
+            shift_pressed: false,
             typing_mode: TypingMode::new(),
             rand: rand::thread_rng(),
             file: file
