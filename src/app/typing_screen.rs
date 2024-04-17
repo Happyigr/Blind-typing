@@ -8,7 +8,6 @@ use std::{
     collections::HashMap,
     fs::File,
     io::{BufReader, Write},
-    ops::Add,
 };
 
 struct LetterInfo {
@@ -41,70 +40,82 @@ impl LetterInfo {
     // i dont need to store the main letter in the structure, because i have this letter in the
     // hashmap of typinginfo
     fn to_json(&self, main_letter: char) -> JSONLetterInfo {
-        let mut letter_accuracies = HashMap::new();
+        let mut letter_presses = HashMap::new();
 
         for (ch, guesses) in self.pressed_letters.iter() {
-            // calculating accuracy with rounding to 2 decimals after dot
-            let accuracy = Accuracy::new(self.presses, *guesses);
-            letter_accuracies.insert(*ch, accuracy);
+            // let accuracy = Accuracy::new(self.presses, *guesses);
+            letter_presses.insert(*ch, *guesses);
         }
 
         JSONLetterInfo {
             main_letter,
-            letter_accuracies,
+            letter_accuracies: letter_presses,
+            presses_of_key: self.presses,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
-pub struct Accuracy {
-    presses: usize,
-    guesses: usize,
-}
-
-impl Accuracy {
-    fn new(presses: usize, guesses: usize) -> Accuracy {
-        Accuracy { presses, guesses }
-    }
-
-    pub fn get_perc(&self) -> f64 {
-        let accuracy = ((self.guesses as f64 / self.presses as f64) * 1000.0).round() / 10.0;
-
-        accuracy
-    }
-}
-
-impl Add for Accuracy {
-    type Output = Accuracy;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Accuracy::new(self.presses + rhs.presses, self.guesses + rhs.guesses)
-    }
-}
+// #[derive(Serialize, Deserialize, Clone, Copy)]
+// pub struct Accuracy {
+//     presses_of_key: usize,
+//     right_guessed: usize,
+// }
+//
+// impl Accuracy {
+//     fn new(presses_of_key: usize, right_guessed: usize) -> Accuracy {
+//         Accuracy {
+//             presses_of_key,
+//             right_guessed,
+//         }
+//     }
+//
+//     pub fn get_perc(&self) -> f64 {
+//         let accuracy =
+//             ((self.right_guessed as f64 / self.presses_of_key as f64) * 1000.0).round() / 10.0;
+//
+//         accuracy
+//     }
+// }
 
 #[derive(Serialize, Deserialize)]
 pub struct JSONLetterInfo {
     // pub wpm: f64,
     pub main_letter: char,
-    pub letter_accuracies: HashMap<char, Accuracy>,
+    // containes the letters and the accuracy of those letters
+    pub letter_accuracies: HashMap<char, usize>,
+    presses_of_key: usize,
 }
 
 impl JSONLetterInfo {
-    pub fn empty() -> JSONLetterInfo {
-        JSONLetterInfo {
-            main_letter: ' ',
-            letter_accuracies: HashMap::new(),
-        }
+    pub fn get_perc(&self, ch: char) -> f64 {
+        ((*self.letter_accuracies.get(&ch).unwrap() as f64 / self.presses_of_key as f64) * 1000.0)
+            .round()
+            / 10.0
     }
 
     fn update(&mut self, other: &JSONLetterInfo) {
+        // every letter that were tapped
+        self.presses_of_key = self.presses_of_key + other.presses_of_key;
         for (ch, other) in other.letter_accuracies.iter() {
             if let Some(main) = self.letter_accuracies.get_mut(ch) {
-                let temp = *main;
-                *main = *other + temp;
+                *main = *main + *other;
             } else {
                 self.letter_accuracies.insert(*ch, *other);
             }
+        }
+    }
+
+    // todo! delete this method
+    fn get_copy(&self) -> JSONLetterInfo {
+        let copy = self
+            .letter_accuracies
+            .iter()
+            .map(|(ch, acc)| (*ch, acc.clone()))
+            .collect::<HashMap<char, usize>>();
+        JSONLetterInfo {
+            main_letter: self.main_letter,
+            letter_accuracies: copy,
+            presses_of_key: self.presses_of_key,
         }
     }
 }
@@ -117,6 +128,18 @@ pub struct JSONResults {
 }
 
 impl JSONResults {
+    pub fn get_result_by_letter(&self, pressed_ch: char) -> HashMap<char, f64> {
+        let letter_info = self.letters_info.get(&pressed_ch).unwrap();
+
+        let results: HashMap<char, f64> = letter_info
+            .letter_accuracies
+            .iter()
+            .map(|(ch, _)| (*ch, letter_info.get_perc(*ch)))
+            .collect();
+
+        results
+    }
+
     fn new() -> JSONResults {
         JSONResults {
             wpm: 0.0,
@@ -124,7 +147,8 @@ impl JSONResults {
             letters_info: HashMap::new(),
         }
     }
-    fn update(&mut self, other: JSONResults) {
+
+    fn update(&mut self, other: &JSONResults) {
         if self.wpm != 0.0 {
             self.wpm = (self.wpm + other.wpm) / 2.0;
         } else {
@@ -136,11 +160,11 @@ impl JSONResults {
             self.total_accuracy = other.total_accuracy;
         }
 
-        for (ch, info_other) in other.letters_info.into_iter() {
+        for (ch, info_other) in other.letters_info.iter() {
             if let Some(info_main) = self.letters_info.get_mut(&ch) {
                 info_main.update(&info_other);
             } else {
-                self.letters_info.insert(ch, info_other);
+                self.letters_info.insert(*ch, info_other.get_copy());
             }
         }
     }
@@ -254,13 +278,12 @@ impl TypingMode {
             letters_info,
         };
 
-        readed_json.update(new_json);
+        readed_json.update(&new_json);
+        self.result_data = Some(new_json);
 
         let mut file = File::create("src/results.json").unwrap();
         file.write_all(serde_json::to_string(&readed_json).unwrap().as_bytes())
             .unwrap();
-
-        self.result_data = Some(readed_json);
     }
 
     pub fn get_last_results(&self) -> &JSONResults {

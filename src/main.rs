@@ -66,6 +66,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
         terminal.draw(|f| ui(f, app))?;
 
         if let Event::Key(key) = event::read()? {
+            // todo big letters in typing mode with shift
             if key.kind != KeyEventKind::Press {
                 continue;
             }
@@ -75,10 +76,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
             if let KeyCode::Char(ch) = key.code {
                 app.pressed_letter = ch;
             }
-            if key.code == KeyCode::Modifier(event::ModifierKeyCode::LeftShift) {
-                app.shift_pressed = true;
-            } else {
-                app.shift_pressed = false;
+
+            if key.code == KeyCode::Tab {
+                app.shift_pressed = !app.shift_pressed;
             }
 
             match app.current_screen {
@@ -111,23 +111,24 @@ fn main_behavior(key: &KeyEvent, app: &mut App) {
         KeyCode::Char('q') => app.current_screen = Screens::Exiting,
         KeyCode::Char('r') => app.current_screen = Screens::GlobalResultMain,
         KeyCode::Char('s') => app.start_typing(),
+        KeyCode::Char('R') => app.delete_json(),
         _ => (),
     }
 }
 fn typing_behavior(key: &KeyEvent, app: &mut App) {
+    if key.modifiers == KeyModifiers::SHIFT {
+        app.shift_pressed = true;
+    } else {
+        app.shift_pressed = false;
+    }
     match key.code {
         KeyCode::Esc => app.current_screen = Screens::Main,
         // reload the typing letters
         KeyCode::Tab => app.reload_typing(),
         KeyCode::Char(ch) => {
             // if there are the next letter
-            if let Some(guess) = app.guess(ch) {
-                if guess {
-                    // cursore movement
-                } else {
-                    // cursore movement
-                }
-            // else if there are no more letters in the word we end to typing
+            if let Some(_letter) = app.guess(ch) {
+                // else if there are no more letters in the word we end to typing
             } else {
                 // make the end of the typing
                 app.current_screen = Screens::TypingResult;

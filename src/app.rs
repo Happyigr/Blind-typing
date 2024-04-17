@@ -1,5 +1,9 @@
-use std::{fs, io};
+use std::{
+    fs::{self, File},
+    io::{self, Write},
+};
 
+use crossterm::event::KeyModifiers;
 use rand::{rngs::ThreadRng, Rng};
 use ratatui::text::Line;
 
@@ -7,7 +11,7 @@ use self::typing_screen::{JSONResults, TypingMode};
 
 pub mod typing_screen;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Screens {
     Typing,
     TypingResult,
@@ -32,11 +36,17 @@ impl Screens {
     }
     pub fn get_keys_hints(&self) -> &str {
         match self {
-            Screens::Main => "q - exit app, s - start, r - global results",
+            Screens::Main => {
+                "q - exit app, s - start, r - global results, R - delete existing result data"
+            }
             Screens::Typing => "Esc - main screen, Tab - empty the typing",
             Screens::TypingResult => "q - main screen, c - continue typing",
-            Screens::GlobalResultMain => "letter - letter result, Esc - main screen",
-            Screens::LetterResult => "letter - another letter, Esc - global results",
+            Screens::GlobalResultMain => {
+                "letter - letter result, Esc - main screen, Tab - switch to big letters"
+            }
+            Screens::LetterResult => {
+                "letter - another letter, Esc - global results, Tab - switch to big letters"
+            }
             Screens::Exiting => "y - yes, n - no",
             Screens::Alert => "TODO ",
         }
@@ -81,6 +91,7 @@ impl App {
     }
     pub fn reload_typing(&mut self) {
         self.typing_mode.reload_typing();
+        self.shift_pressed = false;
     }
 
     pub fn start_typing(&mut self) {
@@ -95,6 +106,11 @@ impl App {
 
     pub fn get_last_results(&self) -> &JSONResults {
         self.typing_mode.get_last_results()
+    }
+
+    pub fn delete_json(&self) {
+        let mut file = File::create("src/results.json").unwrap();
+        file.write_all("".as_bytes()).unwrap();
     }
 
     pub fn guess(&mut self, key: char) -> Option<bool> {
