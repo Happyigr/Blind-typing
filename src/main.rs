@@ -63,7 +63,7 @@ fn main() -> Result<(), io::Error> {
 // running the main loop of the app
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), io::Error> {
     loop {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|f| ui(f, app))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind != KeyEventKind::Press {
@@ -92,10 +92,18 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
                 Screens::TypingResult => end_typing_behaviour(&key, app),
                 Screens::GlobalResultMain => global_res_behavior(&key, app),
                 Screens::LetterResult => letter_res_behavior(&key, app),
+                Screens::Alert => alert_behaviour(&key, app),
             }
         }
     }
     Ok(())
+}
+
+fn alert_behaviour(key: &KeyEvent, app: &mut App) {
+    match key.code {
+        KeyCode::Char('q') => app.current_screen = app.previous_screen,
+        _ => (),
+    }
 }
 
 fn main_behavior(key: &KeyEvent, app: &mut App) {

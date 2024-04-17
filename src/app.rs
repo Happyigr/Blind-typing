@@ -7,6 +7,7 @@ use self::typing_screen::{JSONResults, TypingMode};
 
 pub mod typing_screen;
 
+#[derive(Clone, Copy)]
 pub enum Screens {
     Typing,
     TypingResult,
@@ -14,6 +15,7 @@ pub enum Screens {
     LetterResult,
     Exiting,
     Main,
+    Alert,
 }
 
 impl Screens {
@@ -25,6 +27,7 @@ impl Screens {
             Screens::LetterResult => "Global Letter Result",
             Screens::Exiting => "Exit",
             Screens::Main => "Blind Typing",
+            Screens::Alert => "TODO error mssg?",
         }
     }
     pub fn get_keys_hints(&self) -> &str {
@@ -35,6 +38,7 @@ impl Screens {
             Screens::GlobalResultMain => "letter - letter result, Esc - main screen",
             Screens::LetterResult => "letter - another letter, Esc - global results",
             Screens::Exiting => "y - yes, n - no",
+            Screens::Alert => "TODO ",
         }
     }
 }
@@ -43,6 +47,8 @@ pub struct App {
     pub current_screen: Screens,
     pub pressed_letter: char,
     pub shift_pressed: bool,
+    pub alert_text: String,
+    pub previous_screen: Screens,
     file: Vec<String>,
     typing_mode: TypingMode,
     rand: ThreadRng,
@@ -54,8 +60,10 @@ impl App {
 
         App {
             current_screen: Screens::Main,
+            previous_screen: Screens::Main,
             pressed_letter: ' ',
             shift_pressed: false,
+            alert_text: "Init value".to_string(),
             typing_mode: TypingMode::new(),
             rand: rand::thread_rng(),
             file: file
@@ -66,6 +74,11 @@ impl App {
         }
     }
 
+    pub fn alert(&mut self, text: &str) {
+        self.alert_text = text.to_string();
+        self.previous_screen = self.current_screen;
+        self.current_screen = Screens::Alert;
+    }
     pub fn reload_typing(&mut self) {
         self.typing_mode.reload_typing();
     }

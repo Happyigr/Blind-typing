@@ -11,7 +11,7 @@ use crate::app::{typing_screen::JSONResults, App, Screens};
 
 struct LetterInfo(char, f64);
 
-pub fn ui(f: &mut Frame, app: &App) {
+pub fn ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -69,7 +69,12 @@ pub fn ui(f: &mut Frame, app: &App) {
             let results = json_results
                 .letters_info
                 .iter()
-                .map(|(ch, letter_info)| (*ch, *letter_info.letter_accuracies.get(&ch).unwrap()))
+                .map(|(ch, letter_info)| {
+                    (
+                        *ch,
+                        letter_info.letter_accuracies.get(&ch).unwrap().get_perc(),
+                    )
+                })
                 .collect::<HashMap<char, f64>>();
 
             render_results(
@@ -87,7 +92,12 @@ pub fn ui(f: &mut Frame, app: &App) {
             let results = json_results
                 .letters_info
                 .iter()
-                .map(|(ch, letter_info)| (*ch, *letter_info.letter_accuracies.get(&ch).unwrap()))
+                .map(|(ch, letter_info)| {
+                    (
+                        *ch,
+                        letter_info.letter_accuracies.get(&ch).unwrap().get_perc(),
+                    )
+                })
                 .collect::<HashMap<char, f64>>();
 
             render_results(
@@ -108,26 +118,46 @@ pub fn ui(f: &mut Frame, app: &App) {
                 .unwrap()
                 .letter_accuracies;
 
+            let results: HashMap<char, f64> = results
+                .iter()
+                .map(|(ch, acc)| (*ch, acc.get_perc()))
+                .collect();
+
             render_results(
                 f,
                 &chunks[1],
                 &results,
-                json_results.wpm,
-                json_results.total_accuracy,
+                0.0,
+                *results.get(&app.pressed_letter).unwrap(),
                 app.shift_pressed,
             )
         }
-        Screens::Exiting => alert(f, "hi"),
+        Screens::Exiting => app.alert("hi"),
         Screens::Main => render_logo(f, &chunks[1]),
+        Screens::Alert => alert(f, &app.alert_text),
     };
 }
 fn alert(f: &mut Frame, text: &str) {
+    let chunks = Layout::vertical([
+        Constraint::Percentage(20),
+        Constraint::Min(1),
+        Constraint::Percentage(20),
+    ])
+    .split(f.size());
+
+    let chunks = Layout::horizontal([
+        Constraint::Percentage(30),
+        Constraint::Min(1),
+        Constraint::Percentage(30),
+    ])
+    .split(chunks[1]);
+
     let block = Block::bordered()
         .border_type(BorderType::Rounded)
         .set_style(Style::new().fg(Color::LightMagenta).bg(Color::Red));
     let paragraph = Paragraph::new(Text::styled(text, Style::new().fg(Color::Red))).block(block);
 
-    f.render_widget(paragraph, f.size())
+    f.render_widget(paragraph, chunks[1]);
 }
 
 fn render_logo(f: &mut Frame, area: &Rect) {
@@ -175,7 +205,11 @@ fn render_results(
     uppercase: bool,
 ) {
     let time_line = Line::styled(
-        format!("Speed: {} wpm, Total accuracy: {}%", wpm, total_accuracy),
+        format!(
+            "Speed: {} wpm, Total accuracy: {}%",
+            (wpm * 100.0).round() / 100.0,
+            total_accuracy
+        ),
         Style::new().fg(Color::Red),
     )
     .centered();
@@ -188,29 +222,37 @@ fn render_results(
         }))
         .centered();
 
-    let letters_paragraph = Paragraph::new(letters_line)
+    let letters_block = Paragraph::new(letters_line)
         .wrap(Wrap { trim: true })
-        .centered();
+        .centered()
+        .block(Block::bordered().border_type(BorderType::Rounded))
+        .fg(Color::White);
 
     let main_chunk = Layout::vertical([
-        Constraint::Length(5),
-        Constraint::Percentage(100),
+        Constraint::Length(20),
+        Constraint::Min(1),
         Constraint::Length(14),
     ])
     .split(*area);
-    let chunks = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(main_chunk[0]);
 
-    f.render_widget(time_line, chunks[0]);
-    f.render_widget(letters_paragraph, chunks[1]);
+    let upper_chunks =
+        Layout::vertical([Constraint::Length(3), Constraint::Percentage(100)]).split(main_chunk[0]);
+
+    let letters_chunk = Layout::horizontal([Constraint::Min(1)])
+        .horizontal_margin(5)
+        .vertical_margin(1)
+        .split(upper_chunks[0])[0];
+
+    f.render_widget(time_line, upper_chunks[0]);
+    f.render_widget(letters_block, letters_chunk);
 
     let keyboard_chunk = Layout::horizontal([
         Constraint::Min(10),
         Constraint::Length(67),
         Constraint::Min(10),
     ])
-    .split(main_chunk[2]);
-    render_colored_keyboard(f, &keyboard_chunk[1], results, uppercase);
+    .split(main_chunk[2])[1];
+    render_colored_keyboard(f, &keyboard_chunk, results, uppercase);
 }
 
 fn render_colored_keyboard(
