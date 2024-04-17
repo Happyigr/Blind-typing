@@ -25,7 +25,7 @@ I want to implement both of versions of my app: TUI and GUI (with tauri).
 - [x] - results after typing
 - [x] - better results after typing (no JSON)
 - [ ] - text getting from other resources
-- [ ] - dynimacly results when typing with colored keyboard, that shows taps on keyboard
+- [x] - dynimacly results when typing with colored keyboard, that shows taps on keyboard
 - [x] - global results of all the typing tests
 - [x] - global results by letter
 - [ ] - better ui
