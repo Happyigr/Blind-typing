@@ -74,14 +74,14 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
                 break;
             }
             if let KeyCode::Char(ch) = key.code {
-                app.pressed_letter = ch;
+                app.set_key_pressed(ch);
             }
 
             if key.code == KeyCode::Tab {
-                app.shift_pressed = !app.shift_pressed;
+                app.change_uppercase();
             }
 
-            match app.current_screen {
+            match app.get_current_screen() {
                 Screens::Main => main_behavior(&key, app),
                 Screens::Typing => typing_behavior(&key, app),
                 Screens::Exiting => {
@@ -101,37 +101,34 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
 
 fn alert_behaviour(key: &KeyEvent, app: &mut App) {
     match key.code {
-        KeyCode::Char('q') => app.current_screen = app.previous_screen,
+        KeyCode::Esc => app.change_screen(app.get_previous_screen()),
         _ => (),
     }
 }
 
 fn main_behavior(key: &KeyEvent, app: &mut App) {
     match key.code {
-        KeyCode::Char('q') => app.current_screen = Screens::Exiting,
-        KeyCode::Char('r') => app.current_screen = Screens::GlobalResultMain,
+        KeyCode::Char('q') => app.change_screen(Screens::Exiting),
+        KeyCode::Char('r') => app.change_screen(Screens::GlobalResultMain),
         KeyCode::Char('s') => app.start_typing(),
         KeyCode::Char('R') => app.delete_json(),
         _ => (),
     }
 }
 fn typing_behavior(key: &KeyEvent, app: &mut App) {
-    if key.modifiers == KeyModifiers::SHIFT {
-        app.shift_pressed = true;
-    } else {
-        app.shift_pressed = false;
-    }
+    app.set_uppercase(key.modifiers == KeyModifiers::SHIFT);
+
     match key.code {
-        KeyCode::Esc => app.current_screen = Screens::Main,
+        KeyCode::Esc => app.change_screen(Screens::Main),
         // reload the typing letters
         KeyCode::Tab => app.reload_typing(),
         KeyCode::Char(ch) => {
             // if there are the next letter
-            if let Some(_letter) = app.guess(ch) {
+            if let Some(_letter) = app.guess() {
                 // else if there are no more letters in the word we end to typing
             } else {
                 // make the end of the typing
-                app.current_screen = Screens::TypingResult;
+                app.change_screen(Screens::TypingResult);
             }
         }
         _ => (),
@@ -139,7 +136,7 @@ fn typing_behavior(key: &KeyEvent, app: &mut App) {
 }
 fn end_typing_behaviour(key: &KeyEvent, app: &mut App) {
     match key.code {
-        KeyCode::Char('q') => app.current_screen = Screens::Main,
+        KeyCode::Char('q') => app.change_screen(Screens::Main),
         KeyCode::Char('c') => app.start_typing(),
         _ => (),
     }
@@ -149,7 +146,7 @@ fn exiting_behavior(key: &KeyEvent, app: &mut App) -> bool {
         match key.code {
             KeyCode::Char('y') => return true,
             KeyCode::Char('n') => {
-                app.current_screen = Screens::Main;
+                app.change_screen(Screens::Main);
                 return false;
             }
             _ => (),
@@ -158,17 +155,17 @@ fn exiting_behavior(key: &KeyEvent, app: &mut App) -> bool {
 }
 fn global_res_behavior(key: &KeyEvent, app: &mut App) {
     match key.code {
-        KeyCode::Esc => app.current_screen = Screens::Main,
-        KeyCode::Char(ch) => app.current_screen = Screens::LetterResult,
+        KeyCode::Esc => app.change_screen(Screens::Main),
+        KeyCode::Char(ch) => app.change_screen(Screens::LetterResult),
         _ => (),
     }
 }
 fn letter_res_behavior(key: &KeyEvent, app: &mut App) {
     match key.code {
-        KeyCode::Esc => app.current_screen = Screens::GlobalResultMain,
+        KeyCode::Esc => app.change_screen(Screens::GlobalResultMain),
         KeyCode::Char(ch) => {
-            app.pressed_letter = ch;
-            app.current_screen = Screens::LetterResult
+            app.set_key_pressed(ch);
+            app.change_screen(Screens::LetterResult)
         }
         _ => (),
     }

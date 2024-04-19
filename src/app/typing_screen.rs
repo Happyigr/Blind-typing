@@ -55,28 +55,6 @@ impl LetterInfo {
     }
 }
 
-// #[derive(Serialize, Deserialize, Clone, Copy)]
-// pub struct Accuracy {
-//     presses_of_key: usize,
-//     right_guessed: usize,
-// }
-//
-// impl Accuracy {
-//     fn new(presses_of_key: usize, right_guessed: usize) -> Accuracy {
-//         Accuracy {
-//             presses_of_key,
-//             right_guessed,
-//         }
-//     }
-//
-//     pub fn get_perc(&self) -> f64 {
-//         let accuracy =
-//             ((self.right_guessed as f64 / self.presses_of_key as f64) * 1000.0).round() / 10.0;
-//
-//         accuracy
-//     }
-// }
-
 #[derive(Serialize, Deserialize)]
 pub struct JSONLetterInfo {
     // pub wpm: f64,
@@ -105,7 +83,6 @@ impl JSONLetterInfo {
         }
     }
 
-    // todo! delete this method
     fn get_copy(&self) -> JSONLetterInfo {
         let copy = self
             .letter_accuracies
@@ -128,6 +105,12 @@ pub struct JSONResults {
 }
 
 impl JSONResults {
+    pub fn get_total_results(&self) -> HashMap<char, f64> {
+        self.letters_info
+            .iter()
+            .map(|(ch, letter_info)| (*ch, letter_info.get_perc(*ch)))
+            .collect::<HashMap<char, f64>>()
+    }
     pub fn get_result_by_letter(&self, pressed_ch: char) -> HashMap<char, f64> {
         let letter_info = self.letters_info.get(&pressed_ch).unwrap();
 
@@ -155,7 +138,8 @@ impl JSONResults {
             self.wpm = other.wpm
         }
         if self.total_accuracy != 0.0 {
-            self.total_accuracy = (self.total_accuracy + other.total_accuracy) / 2.0;
+            self.total_accuracy =
+                ((self.total_accuracy + other.total_accuracy) / 2.0 * 10.0).round() / 10.0;
         } else {
             self.total_accuracy = other.total_accuracy;
         }
@@ -248,7 +232,6 @@ impl TypingMode {
         }
     }
 
-    // todo capitilize letters equal to no capitilize or make a map when shift is pressed
     // this function writes the results in the json file
     fn result_calculation(&mut self) {
         let file = File::open("src/results.json").unwrap();

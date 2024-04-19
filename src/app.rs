@@ -1,9 +1,8 @@
 use std::{
     fs::{self, File},
-    io::{self, Write},
+    io::Write,
 };
 
-use crossterm::event::KeyModifiers;
 use rand::{rngs::ThreadRng, Rng};
 use ratatui::text::Line;
 
@@ -54,14 +53,35 @@ impl Screens {
 }
 
 pub struct App {
-    pub current_screen: Screens,
-    pub pressed_letter: char,
-    pub shift_pressed: bool,
-    pub alert_text: String,
-    pub previous_screen: Screens,
     file: Vec<String>,
+    events: AppEvents,
     typing_mode: TypingMode,
     rand: ThreadRng,
+}
+
+struct AppEvents {
+    pub current_screen: Screens,
+    pub previous_screen: Screens,
+    pub pressed_letter: char,
+    pub is_uppercase: bool,
+    pub alert_text: String,
+}
+
+impl AppEvents {
+    fn new() -> AppEvents {
+        AppEvents {
+            current_screen: Screens::Main,
+            previous_screen: Screens::Main,
+            pressed_letter: ' ',
+            is_uppercase: false,
+            alert_text: "init value".to_string(),
+        }
+    }
+
+    fn change_screen_to(&mut self, new_screen: Screens) {
+        self.previous_screen = self.current_screen;
+        self.current_screen = new_screen;
+    }
 }
 
 impl App {
@@ -69,11 +89,7 @@ impl App {
         let file = fs::read_to_string(filename).unwrap();
 
         App {
-            current_screen: Screens::Main,
-            previous_screen: Screens::Main,
-            pressed_letter: ' ',
-            shift_pressed: false,
-            alert_text: "Init value".to_string(),
+            events: AppEvents::new(),
             typing_mode: TypingMode::new(),
             rand: rand::thread_rng(),
             file: file
@@ -84,20 +100,36 @@ impl App {
         }
     }
 
-    pub fn alert(&mut self, text: &str) {
-        self.alert_text = text.to_string();
-        self.previous_screen = self.current_screen;
-        self.current_screen = Screens::Alert;
-    }
-    pub fn reload_typing(&mut self) {
-        self.typing_mode.reload_typing();
-        self.shift_pressed = false;
+    pub fn set_key_pressed(&mut self, ch: char) {
+        self.events.pressed_letter = ch;
     }
 
-    pub fn start_typing(&mut self) {
-        self.current_screen = Screens::Typing;
-        let index = self.rand.gen_range(0..self.file.len());
-        self.typing_mode.init(self.file[index].clone());
+    pub fn set_uppercase(&mut self, getted: bool) {
+        self.events.is_uppercase = getted;
+    }
+
+    pub fn change_uppercase(&mut self) {
+        self.events.is_uppercase = !self.events.is_uppercase;
+    }
+
+    pub fn change_screen(&mut self, new_screen: Screens) {
+        self.events.change_screen_to(new_screen);
+    }
+
+    pub fn get_uppercase(&self) -> bool {
+        self.events.is_uppercase
+    }
+
+    pub fn get_pressed_letter(&self) -> char {
+        self.events.pressed_letter
+    }
+
+    pub fn get_previous_screen(&self) -> Screens {
+        self.events.previous_screen
+    }
+
+    pub fn get_current_screen(&self) -> &Screens {
+        &self.events.current_screen
     }
 
     pub fn get_typing_text(&self) -> Line {
@@ -108,13 +140,29 @@ impl App {
         self.typing_mode.get_last_results()
     }
 
+    pub fn alert(&mut self, text: &str) {
+        self.events.alert_text = text.to_string();
+        self.change_screen(Screens::Alert);
+    }
+
+    pub fn guess(&mut self) -> Option<bool> {
+        self.typing_mode.guess(self.events.pressed_letter)
+        // blanked cursore todo!
+    }
+
+    pub fn reload_typing(&mut self) {
+        self.typing_mode.reload_typing();
+        self.events.is_uppercase = false;
+    }
+
+    pub fn start_typing(&mut self) {
+        self.change_screen(Screens::Typing);
+        let index = self.rand.gen_range(0..self.file.len());
+        self.typing_mode.init(self.file[index].clone());
+    }
+
     pub fn delete_json(&self) {
         let mut file = File::create("src/results.json").unwrap();
         file.write_all("".as_bytes()).unwrap();
-    }
-
-    pub fn guess(&mut self, key: char) -> Option<bool> {
-        self.typing_mode.guess(key)
-        // cursor movement todo!
     }
 }
