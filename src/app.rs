@@ -82,7 +82,9 @@ impl AppEvents {
 
     fn change_screen_to(&mut self, new_screen: Screens) {
         if new_screen != self.current_screen {
-            self.previous_screen = self.current_screen;
+            if self.current_screen != Screens::Alert{
+                self.previous_screen = self.current_screen;
+            }
             self.current_screen = new_screen;
         }
     }
@@ -169,10 +171,11 @@ impl App {
         self.typing_mode.init(self.file[index].clone());
     }
 
-    pub async fn get_new_texts(&mut self) {
-        let words = get_chatgpt_words().await.unwrap();
+    pub async fn get_new_texts(&mut self) -> Result<(), chatgpt::err::Error> {
+        let words = get_chatgpt_words().await?;
         let mut file = File::create("src/texts.txt").unwrap();
         file.write_all(words.as_bytes()).unwrap();
+        Ok(())
     }
 
     pub fn delete_json(&self) {

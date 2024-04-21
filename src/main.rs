@@ -115,7 +115,11 @@ async fn main_behavior(key: &KeyEvent, app: &mut App) {
         KeyCode::Char('r') => app.change_screen(Screens::GlobalResultMain),
         KeyCode::Char('s') => app.start_typing(),
         KeyCode::Char('R') => app.delete_json(),
-        KeyCode::Char('t') => app.get_new_texts().await,
+        KeyCode::Char('t') => {
+            if let Err(err) = app.get_new_texts().await{
+                app.alert(format!("{}\nCurrent: {:?}\nPrevious: {:?}",err.to_string(),app.get_current_screen(), app.get_previous_screen()));}
+            
+        }
         _ => (),
     }
 }

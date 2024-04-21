@@ -11,6 +11,8 @@ I think, that this should work (you need a rust installed on your machine):
 - `cd in the folder of the project`
 - `cargo run`
 
+If you want to make new texts with chatgpt, you have to write your api key in the file `api_key.txt` under the src directory.
+
 ## Why rust?
 
 I have heard a lot about rust, and I wanted to learn it. I have read the Rust book, but i want to tr, to implement smth useful. Because of it I wanted to make my own project, that i can show on my job or my friends.
