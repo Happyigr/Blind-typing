@@ -7,8 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufReader, Write},
+    io::{self, BufReader, ErrorKind, Write},
 };
+
+use crate::misc::MyHasher;
 
 struct LetterInfo {
     presses: usize,
@@ -40,7 +42,7 @@ impl LetterInfo {
     // i dont need to store the main letter in the structure, because i have this letter in the
     // hashmap of typinginfo
     fn to_json(&self, main_letter: char) -> JSONLetterInfo {
-        let mut letter_presses = HashMap::new();
+        let mut letter_presses = HashMap::with_hasher(MyHasher::new());
 
         for (ch, guesses) in self.pressed_letters.iter() {
             // let accuracy = Accuracy::new(self.presses, *guesses);
@@ -60,7 +62,7 @@ pub struct JSONLetterInfo {
     // pub wpm: f64,
     pub main_letter: char,
     // containes the letters and the accuracy of those letters
-    pub letter_accuracies: HashMap<char, usize>,
+    pub letter_accuracies: HashMap<char, usize, MyHasher>,
     presses_of_key: usize,
 }
 
@@ -88,7 +90,7 @@ impl JSONLetterInfo {
             .letter_accuracies
             .iter()
             .map(|(ch, acc)| (*ch, acc.clone()))
-            .collect::<HashMap<char, usize>>();
+            .collect::<HashMap<char, usize, MyHasher>>();
         JSONLetterInfo {
             main_letter: self.main_letter,
             letter_accuracies: copy,
@@ -101,33 +103,43 @@ impl JSONLetterInfo {
 pub struct JSONResults {
     pub wpm: f64,
     pub total_accuracy: f64,
-    pub letters_info: HashMap<char, JSONLetterInfo>,
+    pub letters_info: HashMap<char, JSONLetterInfo, MyHasher>,
 }
 
 impl JSONResults {
-    pub fn get_total_results(&self) -> HashMap<char, f64> {
+    pub fn get_total_results(&self) -> HashMap<char, f64, MyHasher> {
         self.letters_info
             .iter()
             .map(|(ch, letter_info)| (*ch, letter_info.get_perc(*ch)))
-            .collect::<HashMap<char, f64>>()
+            .collect::<HashMap<char, f64, MyHasher>>()
     }
-    pub fn get_result_by_letter(&self, pressed_ch: char) -> HashMap<char, f64> {
-        let letter_info = self.letters_info.get(&pressed_ch).unwrap();
+    pub fn get_result_by_letter(
+        &self,
+        pressed_ch: char,
+    ) -> Result<HashMap<char, f64, MyHasher>, io::Error> {
+        let letter_info = if let Some(letter_info) = self.letters_info.get(&pressed_ch) {
+            letter_info
+        } else {
+            return Err(io::Error::new(
+                ErrorKind::NotFound,
+                "We have no info about this letter :(",
+            ));
+        };
 
-        let results: HashMap<char, f64> = letter_info
+        let results: HashMap<char, f64, MyHasher> = letter_info
             .letter_accuracies
             .iter()
             .map(|(ch, _)| (*ch, letter_info.get_perc(*ch)))
             .collect();
 
-        results
+        Ok(results)
     }
 
     fn new() -> JSONResults {
         JSONResults {
             wpm: 0.0,
             total_accuracy: 0.0,
-            letters_info: HashMap::new(),
+            letters_info: HashMap::with_hasher(MyHasher::new()),
         }
     }
 
@@ -249,7 +261,7 @@ impl TypingMode {
         let total_accuracy =
             ((self.guessed_letters as f64 / self.presses as f64) * 1000.0).round() / 10.0;
 
-        let letters_info: HashMap<char, JSONLetterInfo> = self
+        let letters_info: HashMap<char, JSONLetterInfo, MyHasher> = self
             .results
             .iter_mut()
             .map(|(ch, letter_info)| (*ch, letter_info.to_json(*ch)))

@@ -6,11 +6,13 @@ use std::{
 use rand::{rngs::ThreadRng, Rng};
 use ratatui::text::Line;
 
+use crate::misc::get_chatgpt_words;
+
 use self::typing_screen::{JSONResults, TypingMode};
 
 pub mod typing_screen;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Screens {
     Typing,
     TypingResult,
@@ -36,7 +38,7 @@ impl Screens {
     pub fn get_keys_hints(&self) -> &str {
         match self {
             Screens::Main => {
-                "q - exit app, s - start, r - global results, R - delete existing result data"
+                "q - exit app, s - start, r - global results, R - delete existing result data, t - get new texts"
             }
             Screens::Typing => "Esc - main screen, Tab - empty the typing",
             Screens::TypingResult => "q - main screen, c - continue typing",
@@ -60,11 +62,11 @@ pub struct App {
 }
 
 struct AppEvents {
-    pub current_screen: Screens,
-    pub previous_screen: Screens,
-    pub pressed_letter: char,
-    pub is_uppercase: bool,
-    pub alert_text: String,
+    current_screen: Screens,
+    previous_screen: Screens,
+    pressed_letter: char,
+    is_uppercase: bool,
+    alert_text: String,
 }
 
 impl AppEvents {
@@ -79,8 +81,10 @@ impl AppEvents {
     }
 
     fn change_screen_to(&mut self, new_screen: Screens) {
-        self.previous_screen = self.current_screen;
-        self.current_screen = new_screen;
+        if new_screen != self.current_screen {
+            self.previous_screen = self.current_screen;
+            self.current_screen = new_screen;
+        }
     }
 }
 
@@ -120,6 +124,10 @@ impl App {
         self.events.is_uppercase
     }
 
+    pub fn get_alert_text(&self) -> &str {
+        &self.events.alert_text
+    }
+
     pub fn get_pressed_letter(&self) -> char {
         self.events.pressed_letter
     }
@@ -140,9 +148,9 @@ impl App {
         self.typing_mode.get_last_results()
     }
 
-    pub fn alert(&mut self, text: &str) {
-        self.events.alert_text = text.to_string();
-        self.change_screen(Screens::Alert);
+    pub fn alert(&mut self, text: String) {
+        self.events.alert_text = text;
+        self.events.current_screen = Screens::Alert;
     }
 
     pub fn guess(&mut self) -> Option<bool> {
@@ -159,6 +167,12 @@ impl App {
         self.change_screen(Screens::Typing);
         let index = self.rand.gen_range(0..self.file.len());
         self.typing_mode.init(self.file[index].clone());
+    }
+
+    pub async fn get_new_texts(&mut self) {
+        let words = get_chatgpt_words().await.unwrap();
+        let mut file = File::create("src/texts.txt").unwrap();
+        file.write_all(words.as_bytes()).unwrap();
     }
 
     pub fn delete_json(&self) {

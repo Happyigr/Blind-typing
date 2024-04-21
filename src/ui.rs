@@ -1,14 +1,21 @@
 use ratatui::{
-    buffer::Buffer,
-    layout::{Alignment, Constraint, Direction, Flex, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span, Text},
-    widgets::{Block, BorderType, Borders, Clear, Paragraph, StatefulWidget, Widget, Wrap},
+    widgets::{Block, BorderType, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
-use std::{collections::HashMap, fs::File, io::BufReader, rc::Rc};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{self, BufReader},
+};
 
-use crate::app::{typing_screen::JSONResults, App, Screens};
+use crate::{
+    app::{typing_screen::JSONResults, App, Screens},
+    misc::get_color_by_accuracy,
+};
+use crate::{misc::MyHasher, widgets::keyboard::*};
 
 pub fn ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
@@ -51,7 +58,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
             let layout = Layout::vertical([Constraint::Percentage(50), Constraint::Length(14)])
                 .split(chunks[1]);
 
-            let mut tapped_letter = HashMap::new();
+            let mut tapped_letter = HashMap::with_hasher(MyHasher::new());
             tapped_letter.insert(app.get_pressed_letter(), 101.0);
 
             f.render_stateful_widget(
@@ -62,34 +69,45 @@ pub fn ui(f: &mut Frame, app: &mut App) {
             f.render_widget(main_part, layout[0]);
         }
         Screens::TypingResult => {
-            render_results(
+            if let Err(err) = render_results(
                 f,
                 &chunks[1],
                 app.get_uppercase(),
                 None,
                 Some(app.get_last_results()),
-            );
+            ) {
+                app.alert(err.to_string());
+                alert(f, app);
+            }
         }
-        Screens::GlobalResultMain => render_results(f, &chunks[1], app.get_uppercase(), None, None),
+        Screens::GlobalResultMain => {
+            if let Err(err) = render_results(f, &chunks[1], app.get_uppercase(), None, None) {
+                app.alert(err.to_string());
+                alert(f, app);
+            }
+        }
         Screens::LetterResult => {
-            // todo! make the hashmap always equal see: hasher in rust
-            render_results(
+            if let Err(err) = render_results(
                 f,
                 &chunks[1],
                 app.get_uppercase(),
                 Some(app.get_pressed_letter()),
                 None,
-            )
+            ) {
+                app.alert(err.to_string());
+                alert(f, app);
+            }
         }
         Screens::Exiting => {}
-        Screens::Main => render_logo(f, &chunks[1]),
-        Screens::Alert => {
-            // alert(f, &app.alert_text)
+        Screens::Main => {
+            render_logo(f, &chunks[1]);
         }
+        Screens::Alert => alert(f, app),
     };
 }
-fn alert(f: &mut Frame, text: &str) {
-    let alert_chunk = Layout::vertical([
+
+fn alert(f: &mut Frame, app: &mut App) {
+    let main_chunks = Layout::vertical([
         Constraint::Percentage(20),
         Constraint::Min(1),
         Constraint::Percentage(20),
@@ -101,25 +119,28 @@ fn alert(f: &mut Frame, text: &str) {
         Constraint::Min(1),
         Constraint::Percentage(30),
     ])
-    .split(alert_chunk[1])[1];
-
-    let bg_block = Block::default()
-        .title_top("Error")
-        .borders(Borders::NONE)
-        .bg(Color::Black);
+    .split(main_chunks[1]);
 
     let block = Block::bordered()
+        .title_top("Error")
         .border_type(BorderType::Rounded)
-        .bg(Color::DarkGray)
-        .fg(Color::Red);
+        .bg(Color::Black);
 
-    let paragraph = Paragraph::new(Text::styled(text, Style::new().fg(Color::Red))).block(block);
+    let err_text = Paragraph::new(Text::styled(
+        format!(
+            "\n\nErr: {}\n\nTap any letter to exit this window.",
+            app.get_alert_text()
+        ),
+        Style::new().fg(Color::Red),
+    ))
+    .alignment(Alignment::Center)
+    .block(block);
 
     f.render_widget(Clear, f.size());
-    f.render_widget(bg_block, alert_chunk);
-    f.render_widget(paragraph, alert_chunk);
+    f.render_widget(err_text, alert_chunk[1]);
 }
 
+// todo rewrite as widget
 fn render_logo(f: &mut Frame, area: &Rect) {
     let paragraph = Paragraph::new(Text::styled(
         "╔╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╦╗
@@ -148,19 +169,21 @@ fn render_logo(f: &mut Frame, area: &Rect) {
     f.render_widget(paragraph, chunks[1]);
 }
 
+// todo rewrite as widget
 fn render_results(
     f: &mut Frame,
     area: &Rect,
     uppercase: bool,
     choosed_letter: Option<char>,
     typing_results: Option<&JSONResults>,
-) {
+) -> Result<(), io::Error> {
     let json_results = {
-        let file = File::open("src/results.json").unwrap();
+        let file = File::open("src/results.json")?;
         let read_buf = BufReader::new(file);
-        let json_results: JSONResults = serde_json::from_reader(read_buf).unwrap();
+        let json_results: JSONResults = serde_json::from_reader(read_buf)?;
         json_results
     };
+
     let json_results = match typing_results {
         Some(res) => res,
         None => &json_results,
@@ -168,10 +191,19 @@ fn render_results(
 
     // if there are letter choosen, then it is the results from one letter
     let results = match choosed_letter {
-        Some(ch) => json_results.get_result_by_letter(ch),
+        Some(ch) => match json_results.get_result_by_letter(ch) {
+            Ok(results) => results,
+            Err(err) => return Err(err),
+        },
         None => json_results.get_total_results(),
     };
+
     let total_accuracy = match choosed_letter {
+        // if there are a result of one letter tha, we need to take the accuracy of this letter,
+        // otherwise total accuracy
+        //
+        // here will be always a value, because the letter info always contains the info about
+        // the main letter if there are results about it
         Some(ch) => json_results.letters_info.get(&ch).unwrap().get_perc(ch),
         None => json_results.total_accuracy,
     };
@@ -247,120 +279,7 @@ fn render_results(
 
     f.render_widget(main_info, upper_chunks[0]);
     f.render_widget(letters_block, letters_chunk);
-    f.render_stateful_widget(Keyboard, main_chunk[2], &mut keyboard_state)
-}
+    f.render_stateful_widget(Keyboard, main_chunk[2], &mut keyboard_state);
 
-struct Keyboard;
-struct KeyboardState {
-    keys_to_highlight: HashMap<char, f64>,
-    uppercase: bool,
-}
-
-impl KeyboardState {
-    fn new(keys_to_highlight: HashMap<char, f64>, uppercase: bool) -> KeyboardState {
-        KeyboardState {
-            keys_to_highlight,
-            uppercase,
-        }
-    }
-}
-
-impl StatefulWidget for Keyboard {
-    type State = KeyboardState;
-
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let letters = match state.uppercase {
-            false => "qwertyuiop[]\\asdfghjkl;\'zxcvbnm,./ ",
-            true => "QWERTYUIOP{}|ASDFGHJKL:\"ZXCVBNM<>? ",
-        };
-
-        let letters = letters
-            .chars()
-            .into_iter()
-            .map(|ch| {
-                let accuracy = *state.keys_to_highlight.get(&ch).unwrap_or(&0.0);
-                Keycap {
-                    ch,
-                    color: get_color_by_accuracy(accuracy),
-                }
-            })
-            .collect::<Vec<Keycap>>();
-
-        let keyboard_chunk = Layout::horizontal([
-            Constraint::Fill(1),
-            Constraint::Length(67),
-            Constraint::Fill(1),
-        ])
-        .split(area)[1];
-
-        let keyboard_rows = Layout::vertical([
-            Constraint::Length(3),
-            Constraint::Length(3),
-            Constraint::Length(3),
-            Constraint::Length(3),
-        ])
-        .flex(Flex::Center)
-        .split(keyboard_chunk);
-
-        let rows_lengths: [usize; 4] = [13, 11, 10, 1];
-        // building the layout of the rows
-        let keyboard_rows = keyboard_rows
-            .into_iter()
-            .enumerate()
-            .map(|(row_i, row)| {
-                // if this the 1,2,3 rows it will be a row with the length 5 so many charachtecrs
-                // long, as it in rows_lengths under the 0,1,2 places
-                // on the 4 row it will be a place for space 48 symbols long
-                Layout::horizontal(vec![
-                    match row_i {
-                        3 => Constraint::Length(48),
-                        _ => Constraint::Length(5),
-                    };
-                    rows_lengths[row_i]
-                ])
-                .flex(Flex::Center)
-                .split(*row)
-            })
-            .collect::<Vec<Rc<[Rect]>>>();
-
-        // first row 13 ch, second 11 ch, third 10 ch, and space
-        for (key_i, keycap) in letters.into_iter().enumerate() {
-            match key_i {
-                key_i if key_i <= 12 => keycap.render(keyboard_rows[0][key_i], buf),
-                key_i if key_i <= 23 => keycap.render(keyboard_rows[1][key_i - 13], buf),
-                key_i if key_i <= 33 => keycap.render(keyboard_rows[2][key_i - 24], buf),
-                _ => keycap.render(keyboard_rows[3][0], buf),
-            }
-        }
-
-        Block::bordered()
-            .border_type(BorderType::Rounded)
-            .render(keyboard_chunk, buf);
-    }
-}
-
-struct Keycap {
-    ch: char,
-    color: Color,
-}
-
-impl Widget for Keycap {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new(self.ch.to_string())
-            .style(Style::new().fg(self.color))
-            .centered()
-            .block(Block::bordered().border_type(BorderType::Rounded))
-            .render(area, buf);
-    }
-}
-
-fn get_color_by_accuracy(accuracy: f64) -> Color {
-    match accuracy {
-        perc if perc == 101.0 => Color::Yellow,
-        perc if perc == 0.0 => Color::Reset,
-        perc if perc >= 80.0 => Color::Green,
-        perc if perc >= 50.0 => Color::Blue,
-        perc if perc <= 50.0 => Color::Red,
-        _ => Color::Reset,
-    }
+    Ok(())
 }

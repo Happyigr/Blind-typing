@@ -1,5 +1,7 @@
 mod app;
+mod misc;
 mod ui;
+mod widgets;
 
 use app::{App, Screens};
 use clap::Parser;
@@ -21,24 +23,25 @@ use ui::ui;
 // this is clap
 // This is what will be printed with help
 /// Simple program to greet a person
-#[derive(Parser, Debug)]
+// #[derive(Parser, Debug)]
 // help is included automaticly and the version will print the version of the app out of the
 // cargo.toml file
-#[command(version)]
-struct Args {
+// #[command(version)]
+// struct Args {
     // this is what will be printed in help to this arg(name)
     // Name of the person to greet
     // this tells that we have both the short and long type of attribute in the cli app
     // #[arg(short, long)]
-    // name: String,
+    // key: String,
 
     // Number of times to greet
     // without the default value the user must write it be yourself
     // #[arg(short, long, default_value_t = 1)]
     // count: u8,
-}
+// }
 
-fn main() -> Result<(), io::Error> {
+#[tokio::main]
+async fn main() -> Result<(), io::Error> {
     enable_raw_mode()?;
     let mut stderr = io::stderr();
     execute!(stderr, EnterAlternateScreen, EnableMouseCapture)?;
@@ -46,9 +49,10 @@ fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = ratatui::Terminal::new(backend)?;
 
-    let filename = "src/tests.txt";
+    let filename = "src/texts.txt";
     let mut app = App::new(filename);
-    run_app(&mut terminal, &mut app)?;
+    // run_app(&mut terminal, &mut app)?;
+    run_app(&mut terminal, &mut app).await?;
 
     disable_raw_mode()?;
     execute!(
@@ -61,12 +65,11 @@ fn main() -> Result<(), io::Error> {
 }
 
 // running the main loop of the app
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), io::Error> {
+async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), io::Error> {
     loop {
         terminal.draw(|f| ui(f, app))?;
 
         if let Event::Key(key) = event::read()? {
-            // todo big letters in typing mode with shift
             if key.kind != KeyEventKind::Press {
                 continue;
             }
@@ -82,7 +85,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
             }
 
             match app.get_current_screen() {
-                Screens::Main => main_behavior(&key, app),
+                Screens::Main => main_behavior(&key, app).await,
                 Screens::Typing => typing_behavior(&key, app),
                 Screens::Exiting => {
                     if exiting_behavior(&key, app) {
@@ -101,17 +104,18 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), 
 
 fn alert_behaviour(key: &KeyEvent, app: &mut App) {
     match key.code {
-        KeyCode::Esc => app.change_screen(app.get_previous_screen()),
+        KeyCode::Char(_) => app.change_screen(app.get_previous_screen()),
         _ => (),
     }
 }
 
-fn main_behavior(key: &KeyEvent, app: &mut App) {
+async fn main_behavior(key: &KeyEvent, app: &mut App) {
     match key.code {
         KeyCode::Char('q') => app.change_screen(Screens::Exiting),
         KeyCode::Char('r') => app.change_screen(Screens::GlobalResultMain),
         KeyCode::Char('s') => app.start_typing(),
         KeyCode::Char('R') => app.delete_json(),
+        KeyCode::Char('t') => app.get_new_texts().await,
         _ => (),
     }
 }
@@ -122,7 +126,7 @@ fn typing_behavior(key: &KeyEvent, app: &mut App) {
         KeyCode::Esc => app.change_screen(Screens::Main),
         // reload the typing letters
         KeyCode::Tab => app.reload_typing(),
-        KeyCode::Char(ch) => {
+        KeyCode::Char(_) => {
             // if there are the next letter
             if let Some(_letter) = app.guess() {
                 // else if there are no more letters in the word we end to typing
@@ -156,7 +160,7 @@ fn exiting_behavior(key: &KeyEvent, app: &mut App) -> bool {
 fn global_res_behavior(key: &KeyEvent, app: &mut App) {
     match key.code {
         KeyCode::Esc => app.change_screen(Screens::Main),
-        KeyCode::Char(ch) => app.change_screen(Screens::LetterResult),
+        KeyCode::Char(_) => app.change_screen(Screens::LetterResult),
         _ => (),
     }
 }
