@@ -246,7 +246,8 @@ impl TypingMode {
 
     // this function writes the results in the json file
     fn result_calculation(&mut self) {
-        let file = File::open("src/results.json").unwrap();
+        let file =
+            File::open("results.json").unwrap_or_else(|_| File::create("results.json").unwrap());
         let read_buf = BufReader::new(file);
         let mut readed_json: JSONResults =
             serde_json::from_reader(read_buf).unwrap_or(JSONResults::new());
@@ -276,7 +277,7 @@ impl TypingMode {
         readed_json.update(&new_json);
         self.result_data = Some(new_json);
 
-        let mut file = File::create("src/results.json").unwrap();
+        let mut file = File::create("results.json").unwrap();
         file.write_all(serde_json::to_string(&readed_json).unwrap().as_bytes())
             .unwrap();
     }

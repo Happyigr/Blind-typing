@@ -133,6 +133,7 @@ fn alert(f: &mut Frame, app: &mut App) {
         ),
         Style::new().fg(Color::Red),
     ))
+    .wrap(Wrap { trim: true })
     .alignment(Alignment::Center)
     .block(block);
 
@@ -173,12 +174,12 @@ fn render_logo(f: &mut Frame, area: &Rect) {
 fn render_results(
     f: &mut Frame,
     area: &Rect,
-    uppercase: bool,
+    is_uppercase: bool,
     choosed_letter: Option<char>,
     typing_results: Option<&JSONResults>,
 ) -> Result<(), io::Error> {
     let json_results = {
-        let file = File::open("src/results.json")?;
+        let file = File::open("results.json")?;
         let read_buf = BufReader::new(file);
         let json_results: JSONResults = serde_json::from_reader(read_buf)?;
         json_results
@@ -190,7 +191,7 @@ fn render_results(
     };
 
     // if there are letter choosen, then it is the results from one letter
-    let results = match choosed_letter {
+    let mut results = match choosed_letter {
         Some(ch) => match json_results.get_result_by_letter(ch) {
             Ok(results) => results,
             Err(err) => return Err(err),
@@ -275,7 +276,13 @@ fn render_results(
         .horizontal_margin(5)
         .split(upper_chunks[1])[0];
 
-    let mut keyboard_state = KeyboardState::new(results, uppercase);
+    let mut keyboard_state = match choosed_letter {
+        Some(ch) => {
+            results.insert(ch, 101.0);
+            KeyboardState::new(results, is_uppercase)
+        }
+        None => KeyboardState::new(results, is_uppercase),
+    };
 
     f.render_widget(main_info, upper_chunks[0]);
     f.render_widget(letters_block, letters_chunk);

@@ -6,7 +6,7 @@ use std::{
 use rand::{rngs::ThreadRng, Rng};
 use ratatui::text::Line;
 
-use crate::misc::get_chatgpt_words;
+use crate::misc::{get_chatgpt_words, get_default_sentences};
 
 use self::typing_screen::{JSONResults, TypingMode};
 
@@ -82,7 +82,7 @@ impl AppEvents {
 
     fn change_screen_to(&mut self, new_screen: Screens) {
         if new_screen != self.current_screen {
-            if self.current_screen != Screens::Alert{
+            if self.current_screen != Screens::Alert {
                 self.previous_screen = self.current_screen;
             }
             self.current_screen = new_screen;
@@ -92,7 +92,12 @@ impl AppEvents {
 
 impl App {
     pub fn new(filename: &str) -> App {
-        let file = fs::read_to_string(filename).unwrap();
+        let file = fs::read_to_string(filename).unwrap_or_else(|_| {
+            let sentences = get_default_sentences();
+            let mut file = File::create(filename).unwrap();
+            file.write_all(sentences.as_bytes()).unwrap();
+            sentences
+        });
 
         App {
             events: AppEvents::new(),
@@ -173,13 +178,13 @@ impl App {
 
     pub async fn get_new_texts(&mut self) -> Result<(), chatgpt::err::Error> {
         let words = get_chatgpt_words().await?;
-        let mut file = File::create("src/texts.txt").unwrap();
+        let mut file = File::create("texts.txt").unwrap();
         file.write_all(words.as_bytes()).unwrap();
         Ok(())
     }
 
     pub fn delete_json(&self) {
-        let mut file = File::create("src/results.json").unwrap();
+        let mut file = File::create("results.json").unwrap();
         file.write_all("".as_bytes()).unwrap();
     }
 }

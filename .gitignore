@@ -1,3 +1,4 @@
+rustfmt.toml
 api_key.txt
 target
 tests.txt

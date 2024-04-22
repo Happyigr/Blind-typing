@@ -4,7 +4,6 @@ mod ui;
 mod widgets;
 
 use app::{App, Screens};
-use clap::Parser;
 use crossterm::{
     event::{
         self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyEventKind,
@@ -28,16 +27,16 @@ use ui::ui;
 // cargo.toml file
 // #[command(version)]
 // struct Args {
-    // this is what will be printed in help to this arg(name)
-    // Name of the person to greet
-    // this tells that we have both the short and long type of attribute in the cli app
-    // #[arg(short, long)]
-    // key: String,
+// this is what will be printed in help to this arg(name)
+// Name of the person to greet
+// this tells that we have both the short and long type of attribute in the cli app
+// #[arg(short, long)]
+// key: String,
 
-    // Number of times to greet
-    // without the default value the user must write it be yourself
-    // #[arg(short, long, default_value_t = 1)]
-    // count: u8,
+// Number of times to greet
+// without the default value the user must write it be yourself
+// #[arg(short, long, default_value_t = 1)]
+// count: u8,
 // }
 
 #[tokio::main]
@@ -49,7 +48,7 @@ async fn main() -> Result<(), io::Error> {
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = ratatui::Terminal::new(backend)?;
 
-    let filename = "src/texts.txt";
+    let filename = "texts.txt";
     let mut app = App::new(filename);
     // run_app(&mut terminal, &mut app)?;
     run_app(&mut terminal, &mut app).await?;
@@ -116,9 +115,12 @@ async fn main_behavior(key: &KeyEvent, app: &mut App) {
         KeyCode::Char('s') => app.start_typing(),
         KeyCode::Char('R') => app.delete_json(),
         KeyCode::Char('t') => {
-            if let Err(err) = app.get_new_texts().await{
-                app.alert(format!("{}\nCurrent: {:?}\nPrevious: {:?}",err.to_string(),app.get_current_screen(), app.get_previous_screen()));}
-            
+            if let Err(err) = app.get_new_texts().await {
+                app.alert(format!(
+                    "You need to add the file with yor api key in the folder of the project, with the name \"api_key.txt\" if you want to use this feature.\n\n{}",
+                    err.to_string(),
+                ));
+            }
         }
         _ => (),
     }
