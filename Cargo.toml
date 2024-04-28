@@ -2,7 +2,7 @@
 name = "blind_typing"
 version = "0.1.0"
 edition = "2021"
-license = "MIT or Apache-2.0"
+license = "MIT OR Apache-2.0"
 description = "A simple CLI tool for blind typing test"
 repository = "https://github.com/Happyigr/Blind-typing"
 exclude = ["results.json"]
