@@ -2,7 +2,9 @@
 name = "blind_typing"
 version = "0.1.0"
 edition = "2021"
-
+license = "MIT or Apache-2.0"
+description = "A simple CLI tool for blind typing test"
+repository = "https://github.com/Happyigr/Blind-typing"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
