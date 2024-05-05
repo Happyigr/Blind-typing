@@ -10,6 +10,7 @@ Build this by yourself(you need a rust language installed):
 - `git clone https://github.com/Happyigr/Blind-typing`
 - `cd in the folder of the project`
 - `cargo run`
+
 Or download the release and unzip it, there is the executable, that you can run(maybe `chmod +x blind_typing` will be needed).
 
 If you want to make new texts with chatgpt, you have to write your api key in the file `api_key.txt` under the src directory.
