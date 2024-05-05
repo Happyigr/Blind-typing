@@ -13,7 +13,7 @@ Build this by yourself(you need a rust language installed):
 
 Or download the release and unzip it, there is the executable, that you can run(maybe `chmod +x blind_typing` will be needed).
 
-If you want to make new texts with chatgpt, you have to write your api key in the file `api_key.txt` under the src directory.
+If you want to make new texts with chatgpt, you have to write your api key in the file `api_key.txt` under the src directory or in the directory of the executable.
 
 ## Why rust?
 
